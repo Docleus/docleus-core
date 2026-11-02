@@ -1,0 +1,35 @@
+{
+  "name": "@docleus/core-identity",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Default identity: users with argon2id passwords, hashed expiring sessions, invitations, provider registry.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@docleus/kernel": "workspace:*",
+    "@docleus/sdk": "workspace:*",
+    "@node-rs/argon2": "2.2.2",
+    "kysely": "0.29.7",
+    "uuid": "14.0.3"
+  },
+  "devDependencies": {
+    "@docleus/conformance": "workspace:*",
+    "@docleus/core-storage": "workspace:*",
+    "@docleus/testing": "workspace:*",
+    "vitest": "5.0.5"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Docleus/docleus-core.git",
+    "directory": "packages/core-identity"
+  }
+}

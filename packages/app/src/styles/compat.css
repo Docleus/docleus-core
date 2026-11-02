@@ -1,0 +1,376 @@
+/* Defaults for elements and the generic classes plugin UIs use (`notice`, `error`, `stacked-form`,
+   `inline-form`, `button`, `table`), carried from round 02 so plugin screens keep their look. */
+/* ---------- elements ---------- */
+/* Element defaults sit in :where() so that any class, including plugin CSS, overrides them. */
+:where(h1, h2, h3, h4) {
+  margin: 0;
+  text-wrap: balance;
+}
+:where(h1) {
+  font: var(--t-title);
+  letter-spacing: -0.005em;
+}
+:where(h2) {
+  font: var(--t-h2);
+}
+:where(h3) {
+  font: 600 17px/24px var(--f-title);
+}
+:where(p, ul, ol, dl, figure) {
+  margin: 0;
+}
+:where(code, kbd, pre) {
+  font: var(--t-mono);
+}
+:where(a) {
+  text-decoration-color: var(--hair-2);
+  &:hover {
+    text-decoration-color: currentColor;
+  }
+}
+:where(button, a.button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  height: var(--ctl);
+  padding: 0 var(--s3);
+  border: 1px solid var(--ink);
+  border-radius: var(--r);
+  background: var(--paper);
+  color: var(--ink);
+  font: var(--t-ui-strong);
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform var(--d-press) var(--ease-press),
+    background-color 120ms ease-out,
+    color 120ms ease-out;
+  &:hover {
+    background: var(--sel);
+  }
+  &:active {
+    transform: translateY(1px) scale(0.985);
+    transition-duration: 160ms;
+  }
+  &:disabled {
+    border-color: var(--hair-2);
+    border-style: dashed;
+    background: var(--paper);
+    color: var(--ink-3);
+    cursor: not-allowed;
+    transform: none;
+  }
+}
+/* One filled button per form: its submit. Secondary forms in details and tables stay outlined. */
+:where(form button[type="submit"]:not(details *, table *, .trow *, .btn)) {
+  background: var(--ink);
+  color: var(--paper);
+  &:hover {
+    background: #2a2a2a;
+  }
+  &:disabled {
+    background: var(--paper);
+  }
+}
+:where(
+  input:not([type="checkbox"], [type="radio"], [type="file"]),
+  select,
+  textarea
+) {
+  min-width: 0;
+  height: 32px;
+  padding: 0 var(--s3);
+  border: 1px solid var(--hair-2);
+  border-radius: var(--r);
+  background: var(--paper);
+  color: var(--ink);
+  font: var(--t-ui);
+  transition: border-color 120ms ease-out;
+  &:hover {
+    border-color: var(--ink-2);
+  }
+  &:focus {
+    border-color: var(--ink);
+    outline: 1px solid var(--ink);
+    outline-offset: 0;
+  }
+  &[readonly] {
+    background: var(--rail);
+  }
+  &[aria-invalid="true"] {
+    border-color: var(--ink);
+    text-decoration: underline wavy var(--ink) 1px;
+  }
+}
+:where(textarea) {
+  height: auto;
+  min-height: 96px;
+  padding: var(--s2) var(--s3);
+  resize: vertical;
+}
+:where(select) {
+  padding-right: var(--s6);
+  appearance: none;
+  background: var(--paper)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23111' stroke-width='1.2'/%3E%3C/svg%3E")
+    no-repeat right 10px center;
+}
+:where(input[type="file"]) {
+  font: var(--t-ui);
+  &::file-selector-button {
+    height: var(--ctl);
+    margin-right: var(--s3);
+    padding: 0 var(--s3);
+    border: 1px solid var(--ink);
+    border-radius: var(--r);
+    background: var(--paper);
+    color: var(--ink);
+    font: var(--t-ui-strong);
+    cursor: pointer;
+  }
+}
+:where(form label) {
+  display: grid;
+  gap: var(--s1);
+  font: var(--t-ui-strong);
+}
+:where(form label:has(> input[type="checkbox"], > input[type="radio"])) {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font: var(--t-ui);
+}
+:where(details) > summary {
+  width: fit-content;
+  color: var(--ink-2);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--hair-2);
+  text-underline-offset: 3px;
+  &:hover {
+    color: var(--ink);
+    text-decoration-color: currentColor;
+  }
+}
+:where(dl.details) {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--s2) var(--s5);
+  & dt {
+    color: var(--ink-2);
+  }
+  & dd {
+    margin: 0;
+  }
+}
+
+/* ---------- forms ---------- */
+.inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--s3);
+  & > .error {
+    flex-basis: 100%;
+  }
+}
+.stacked-form {
+  display: grid;
+  gap: var(--s3);
+  max-width: 360px;
+  & > button {
+    justify-self: start;
+  }
+  & > .notice {
+    margin-top: calc(-1 * var(--s2));
+  }
+}
+.slug-input {
+  font: var(--t-mono);
+}
+.providers {
+  display: grid;
+  gap: var(--s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  & .button {
+    width: 100%;
+  }
+}
+.invitation-link input {
+  width: min(100%, 420px);
+  font: var(--t-mono);
+}
+.confirm {
+  align-items: center;
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--ink);
+  border-radius: var(--r);
+  background: var(--paper);
+  box-shadow: var(--lift);
+  animation: pop var(--d-menu) var(--ease-press) both;
+  transform-origin: 0 0;
+}
+
+/* ---------- messages ---------- */
+.notice {
+  color: var(--ink-2);
+}
+:where(span.notice) {
+  animation: ink var(--d-ink) var(--ease-out) both;
+}
+.error {
+  padding-left: var(--s3);
+  border-left: 2px solid var(--ink);
+  color: var(--ink);
+  font-weight: 600;
+  animation: nudge 360ms var(--ease-settle);
+}
+.loading {
+  padding: var(--s5);
+  color: var(--ink-2);
+  animation: fade 400ms ease-out 200ms both;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- tables in settings ---------- */
+.table {
+  & td:last-child,
+  & th:last-child {
+    text-align: right;
+  }
+  & td:first-child,
+  & th:first-child {
+    text-align: left;
+  }
+  & td :where(button) {
+    height: 26px;
+    padding: 0 10px;
+    font-weight: 400;
+  }
+  & td :where(select) {
+    height: 28px;
+  }
+  & td :where(form) {
+    display: inline-flex;
+    gap: var(--s1);
+  }
+}
+.site-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.site {
+  padding: var(--s5) 0;
+  border-top: 1px solid var(--ink);
+  & + .site {
+    border-top-color: var(--hair-2);
+  }
+}
+.publications {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  & li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s2);
+    min-height: 40px;
+    border-bottom: 1px solid var(--hair);
+  }
+}
+
+/* ---------- sign-in, setup, invitation ---------- */
+.login {
+  width: min(calc(100% - 2 * var(--s5)), 360px);
+  margin: 0 auto;
+  padding: 14vh 0 var(--s7);
+  animation: rise var(--d-settle) var(--ease-settle) both;
+  & > * + * {
+    margin-top: var(--s5);
+  }
+  & > h1 {
+    font: var(--t-title);
+  }
+  & form {
+    display: grid;
+    gap: var(--s3);
+    max-width: none;
+  }
+  & form > button {
+    justify-self: stretch;
+  }
+  & form + form {
+    padding-top: var(--s5);
+    border-top: 1px solid var(--hair);
+  }
+}
+.login-mark {
+  display: block;
+  margin-bottom: var(--s6);
+  font: 600 17px/24px var(--f-title);
+}
+
+/* ---------- motion ---------- */
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+/* Status text inks in: it arrives slightly blurred and settles onto the paper. */
+@keyframes ink {
+  from {
+    opacity: 0;
+    filter: blur(1.5px);
+  }
+}
+@keyframes nudge {
+  0% {
+    translate: 4px 0;
+  }
+  100% {
+    translate: 0 0;
+  }
+}
+@keyframes sign {
+  0% {
+    transform: scaleX(0);
+    opacity: 1;
+  }
+  60% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+}
+.cards {
+  padding-left: 0;
+  list-style: none;
+}

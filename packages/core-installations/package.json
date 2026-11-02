@@ -1,0 +1,37 @@
+{
+  "name": "@docleus/core-installations",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Default installations: install, enable, settings and scoped dispatch.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@docleus/kernel": "workspace:*",
+    "@docleus/sdk": "workspace:*",
+    "kysely": "0.29.7"
+  },
+  "devDependencies": {
+    "@docleus/conformance": "workspace:*",
+    "@docleus/core-authz": "workspace:*",
+    "@docleus/core-content": "workspace:*",
+    "@docleus/core-http": "workspace:*",
+    "@docleus/core-identity": "workspace:*",
+    "@docleus/core-storage": "workspace:*",
+    "@docleus/testing": "workspace:*",
+    "vitest": "5.0.5"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Docleus/docleus-core.git",
+    "directory": "packages/core-installations"
+  }
+}

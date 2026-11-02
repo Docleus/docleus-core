@@ -1,0 +1,9 @@
+node_modules
+dist
+dist-site
+coverage
+pnpm-lock.yaml
+vendor
+docs
+extension-catalog.md
+**/tests/fixtures/**/*.md

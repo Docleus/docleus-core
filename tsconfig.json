@@ -1,0 +1,19 @@
+{
+  "extends": "./packages/config/tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": ["packages/*/src", "packages/*/tests"],
+  "exclude": [
+    "**/dist",
+    "**/dist-site",
+    "**/node_modules",
+    "**/vendor",
+    "packages/app"
+  ],
+  "references": [
+    {
+      "path": "packages/kernel/vendor/cordis"
+    }
+  ]
+}

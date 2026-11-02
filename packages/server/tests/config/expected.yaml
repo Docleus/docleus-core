@@ -1,0 +1,13 @@
+- id: http
+  plugin: "@docleus/core-http"
+  config:
+    port: 8080
+- id: blocks
+  plugin: "@docleus/plugin-blocks-commonmark"
+- id: editor
+  plugin: "@docleus/plugin-editor"
+  disabled: true
+- id: mermaid
+  plugin: "@docleus/plugin-mermaid"
+  config:
+    theme: dark

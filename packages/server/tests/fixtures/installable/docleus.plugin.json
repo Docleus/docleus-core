@@ -1,0 +1,11 @@
+{
+  "name": "@test/installable",
+  "version": "1.0.0",
+  "engines": {
+    "docleus": ">=0.0.1 <1.0.0 || ^1"
+  },
+  "entries": {
+    "server": "./server/index.js",
+    "editor": "./editor/index.js"
+  }
+}

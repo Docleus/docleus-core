@@ -1,0 +1,8 @@
+- id: http
+  plugin: "@docleus/core-http"
+  config:
+    port: 3000
+- id: blocks
+  plugin: "@docleus/plugin-blocks-commonmark"
+- id: editor
+  plugin: "@docleus/plugin-editor"

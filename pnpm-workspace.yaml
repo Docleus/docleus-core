@@ -1,0 +1,7 @@
+packages:
+  - packages/*
+
+overrides:
+  # micromark-extension-directive 4 needs the symbol-aware unicodePunctuation
+  # from 2.1, but declares ^2.0.0; 2.0.0 breaks `{a="b"}` attribute parsing.
+  micromark-util-character: 2.1.1

@@ -1,0 +1,434 @@
+/* Screens of the app: org home, sign-in, settings details, and host pieces the components need. */
+.main {
+  position: relative;
+  min-width: 0;
+}
+
+/* ---------- org home ---------- */
+.home {
+  width: min(880px, 100% - 64px);
+  margin: 0 auto;
+  padding: var(--s6) 0 120px;
+  & h1 {
+    margin: 0 0 var(--s5);
+    font: var(--t-page);
+  }
+  & h2 {
+    display: flex;
+    align-items: center;
+    margin: var(--s6) 0 var(--s2);
+    font: var(--t-ui-strong);
+    color: var(--ink-2);
+    & .btn {
+      margin-left: auto;
+    }
+  }
+  & .home-action {
+    margin-top: var(--s5);
+  }
+  & .first-org {
+    margin-top: var(--s5);
+    & > .db {
+      display: grid;
+      gap: var(--s4);
+      padding: var(--s4);
+    }
+  }
+}
+.work {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--hair);
+  & li {
+    display: grid;
+    grid-template-columns: 20px 1fr auto auto;
+    gap: var(--s3);
+    align-items: center;
+    height: 44px;
+    padding: 0 var(--s2);
+    border-bottom: 1px solid var(--hair);
+    cursor: pointer;
+    &:hover a {
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+  }
+  & a {
+    font-weight: 600;
+    text-decoration: none;
+  }
+  & .where {
+    color: var(--ink-2);
+  }
+  & .when {
+    width: 104px;
+    color: var(--ink-2);
+    text-align: right;
+  }
+}
+.work-empty {
+  margin: 0;
+  padding: var(--s3) var(--s2);
+  border-block: 1px solid var(--hair);
+  color: var(--ink-2);
+}
+.spaces {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--s3);
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  min-height: 132px;
+  padding: var(--s4);
+  border: 1px solid var(--hair-2);
+  border-radius: var(--r);
+  text-decoration: none;
+  transition:
+    border-color 120ms ease-out,
+    transform var(--d-press) var(--ease-press);
+  &:hover {
+    border-color: var(--ink);
+  }
+  &:active {
+    transform: translateY(1px) scale(0.99);
+  }
+  & strong {
+    font: 600 18px/24px var(--f-title);
+  }
+  & p {
+    margin: 0;
+    color: var(--ink-2);
+  }
+  /* One line: a wrapped line would start with a separator. The last item
+     gives way first. */
+  & .foot {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+    min-width: 0;
+    margin-top: auto;
+    color: var(--ink-2);
+    white-space: nowrap;
+    & > span {
+      flex: none;
+    }
+    & > span:last-child:not(:first-child) {
+      flex: 0 1 auto;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    & > span + span::before {
+      content: "·";
+      margin-right: var(--s2);
+    }
+  }
+}
+@media (max-width: 1100px) {
+  .spaces {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ---------- sidebar ---------- */
+.snav .side-label {
+  margin-top: var(--s4);
+}
+.side-link.back {
+  color: var(--ink-2);
+}
+.side-link.account {
+  width: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.side-slot {
+  margin-top: var(--s3);
+}
+.tree-nav {
+  position: relative;
+}
+.menu-note {
+  margin: 4px 8px 6px;
+  font-size: 12px;
+}
+
+/* ---------- top bar ---------- */
+/* A fixed order (state, Publish, Edit or Done, then a plugin's last action),
+   so a button never moves when it becomes the primary one. */
+.bar .bar-live {
+  order: 0;
+}
+.bar .bar-publish {
+  order: 1;
+}
+.bar .bar-done,
+.bar .bar-edit {
+  order: 2;
+}
+.bar .btn.is-primary:not(.bar-publish, .bar-edit, .bar-done) {
+  order: 3;
+}
+.page-head {
+  display: grid;
+  gap: var(--s3);
+  margin-bottom: var(--s4);
+}
+
+/* ---------- popovers and dialogs ---------- */
+.pop-line {
+  margin: 6px 0 0;
+  &:first-child {
+    margin-top: 0;
+  }
+}
+.pop .plist {
+  margin-top: 6px;
+}
+.slug-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  & .input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+.move-list {
+  position: static;
+  max-height: 280px;
+  padding: 0;
+  overflow: auto;
+  border: 0;
+  box-shadow: none;
+  animation: none;
+}
+.btn.is-danger {
+  color: var(--del-fg);
+}
+.palette .mi {
+  & > .ell {
+    flex: 0 1 auto;
+    max-width: 50%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  & > small {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+.palette .pr {
+  position: static;
+  min-width: 0;
+  border: 0;
+  box-shadow: none;
+  animation: none;
+}
+.palette-empty {
+  margin: 8px;
+}
+
+/* ---------- settings ---------- */
+.row > .control {
+  min-width: 0;
+}
+.inline-control {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.field-note {
+  display: block;
+  margin-top: 6px;
+}
+.section-tag {
+  margin-left: auto;
+}
+/* A plugin's settings page, or a host table, inside a section box. */
+.section-body {
+  padding: var(--s4);
+  & > :where(* + *) {
+    margin-top: var(--s4);
+  }
+  & > :where(h2, h3) {
+    font: var(--t-ui-strong);
+  }
+}
+.section > .table {
+  margin: 4px 0;
+}
+.section .table th:first-child,
+.section .table td:first-child {
+  padding-left: var(--s4);
+}
+.section .table th:last-child,
+.section .table td:last-child {
+  padding-right: var(--s4);
+}
+.plist.history li {
+  min-height: 30px;
+}
+.who {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.av.is-pending {
+  border: 1px dashed var(--ink-2);
+  background: var(--paper);
+  box-shadow: none;
+  color: var(--ink-2);
+}
+.drop {
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  height: 120px;
+  border: 1px dashed var(--hair-2);
+  border-radius: var(--r);
+  color: var(--ink-2);
+  text-align: center;
+}
+
+/* ---------- sign-in, setup, invitation ---------- */
+.split {
+  display: grid;
+  grid-template-columns: minmax(420px, 1fr) 1fr;
+  min-height: 100vh;
+}
+.form-col {
+  display: flex;
+  flex-direction: column;
+  padding: var(--s6) var(--s7);
+  & .mark {
+    font: 600 18px/1 var(--f-title);
+    text-decoration: none;
+  }
+  & .inner {
+    width: 100%;
+    max-width: 360px;
+    margin: auto 0;
+  }
+  & h1 {
+    margin: 0 0 var(--s2);
+    font: var(--t-page);
+  }
+  & .sub {
+    margin: 0 0 var(--s5);
+    color: var(--ink-2);
+  }
+  & form {
+    display: grid;
+    gap: var(--s4);
+    max-width: none;
+  }
+  & form + form,
+  & .or + form {
+    margin-top: var(--s4);
+  }
+  & input:not([type="checkbox"], [type="radio"]) {
+    width: 100%;
+    height: 36px;
+  }
+  & form > button,
+  & .providers .button,
+  & .sso {
+    justify-content: center;
+    width: 100%;
+    height: 36px;
+  }
+  & .foot {
+    color: var(--pencil);
+  }
+}
+.or {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin: var(--s4) 0;
+  color: var(--pencil);
+  &::before,
+  &::after {
+    content: "";
+    flex: 1;
+    border-top: 1px solid var(--hair);
+  }
+}
+.proof {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--s7);
+  border-left: 1px solid var(--hair);
+  background: var(--rail);
+  & .sheet {
+    max-width: 440px;
+    padding: var(--s6);
+    border: 1px solid var(--hair-2);
+    border-radius: var(--r);
+    background: var(--paper);
+    font: var(--t-read);
+    box-shadow: 0 24px 60px -32px rgb(0 0 0 / 0.25);
+    & h2 {
+      margin: 0 0 var(--s3);
+      font: var(--t-h2);
+    }
+    & p {
+      margin: 0 0 var(--s3);
+    }
+  }
+  & .cap {
+    max-width: 440px;
+    margin-top: var(--s4);
+    color: var(--ink-2);
+  }
+}
+.steps {
+  display: flex;
+  gap: var(--s2);
+  margin-bottom: var(--s4);
+  color: var(--ink-2);
+  & b {
+    color: var(--ink);
+  }
+}
+@media (max-width: 900px) {
+  .split {
+    grid-template-columns: 1fr;
+  }
+  .proof {
+    display: none;
+  }
+  .form-col {
+    padding: var(--s5);
+  }
+}
+/* A host settings component inside a section: the section header already names it. */
+.section-body > .members-settings {
+  display: grid;
+  gap: var(--s3);
+  & > h2:first-child {
+    display: none;
+  }
+  & > h3 {
+    margin-top: var(--s3);
+    font: var(--t-ui-strong);
+  }
+}
+/* Host settings components open with their own h2; inside a titled page it repeats the title. */
+.section-body > :first-child > h2:first-child,
+.section-body > h2:first-child {
+  display: none;
+}

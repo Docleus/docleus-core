@@ -1,0 +1,37 @@
+{
+  "name": "@docleus/testing",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Test helpers: in-memory instances, per-test storage (SQLite or Postgres), and Markdown round-trip checks.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@docleus/core-markdown": "workspace:*",
+    "@docleus/core-storage": "workspace:*",
+    "@docleus/kernel": "workspace:*",
+    "@docleus/sdk": "workspace:*",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@docleus/conformance": "workspace:*",
+    "@types/pg": "8.23.1",
+    "vitest": "5.0.5"
+  },
+  "peerDependencies": {
+    "vitest": "5.0.5"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Docleus/docleus-core.git",
+    "directory": "packages/testing"
+  }
+}

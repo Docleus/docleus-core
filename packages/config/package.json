@@ -1,0 +1,28 @@
+{
+  "name": "@docleus/config",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Shared tsconfig, oxlint, Prettier, Vitest and dependency-cruiser configuration for Docleus repositories.",
+  "exports": {
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./oxlintrc.json": "./oxlintrc.json",
+    "./vitest": "./src/vitest.ts",
+    "./dependency-cruiser": "./dependency-cruiser.cjs"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "5.0.5"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Docleus/docleus-core.git",
+    "directory": "packages/config"
+  }
+}

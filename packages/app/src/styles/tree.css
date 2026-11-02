@@ -1,0 +1,159 @@
+/* Round 03: page tree, change letters, drag insertion line. Row actions sit on the row itself: shown on the current row, while its menu is open, on pointer hover (icons only, no background) and on keyboard focus. Right-click opens the same menu. */
+.tree {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  & ul {
+    margin: 0;
+    padding: 0 0 0 14px;
+    list-style: none;
+  }
+}
+.trow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: var(--row);
+  padding: 0 2px 0 0;
+  border-radius: var(--r);
+  cursor: pointer;
+  user-select: none;
+  /* The menu's row is outlined, so it never reads as a second current page. */
+  &.is-menu {
+    box-shadow: inset 0 0 0 1px var(--hair-2);
+  }
+  &.is-drop {
+    box-shadow: inset 0 0 0 1px var(--ink);
+  }
+  /* The arrow is the button's own mask, centred, so it turns about the
+     middle of its box and lines up with the label in both states. */
+  & .chev {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    border: 0;
+    padding: 0;
+    background: var(--ink-2);
+    color: transparent;
+    font-size: 0;
+    cursor: pointer;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.25 2.5L7.75 6l-3.5 3.5'/%3E%3C/svg%3E")
+      center / 12px 12px no-repeat;
+    transition: transform var(--d-glide) var(--ease-glide);
+    &[aria-expanded="true"] {
+      transform: rotate(90deg);
+    }
+    &.is-leaf {
+      visibility: hidden;
+    }
+  }
+  & > a {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--ink);
+    line-height: var(--row);
+    text-decoration: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  &[aria-current="page"],
+  &.is-current {
+    background: var(--row-current);
+    & > a {
+      font-weight: 600;
+    }
+  }
+  /* Change letters in a draft: A added, M modified, D deleted. */
+  & .chg {
+    flex: none;
+    width: 20px;
+    text-align: center;
+  }
+  & .tacts {
+    display: none;
+    flex: none;
+    gap: 0;
+    margin-right: 2px;
+    & .icon-btn {
+      width: 22px;
+      height: 22px;
+    }
+  }
+  &.is-current .tacts,
+  &.is-menu .tacts,
+  &:hover .tacts,
+  &:focus-within .tacts {
+    display: inline-flex;
+  }
+  &.is-dragging {
+    opacity: 0.4;
+  }
+  &.is-renaming {
+    background: var(--paper);
+    box-shadow: inset 0 0 0 1px var(--ink);
+    & input {
+      flex: 1;
+      min-width: 0;
+      height: 24px;
+      border: 0;
+      background: none;
+      font: var(--t-ui-strong);
+      outline: none;
+    }
+  }
+}
+/* Insertion line during drag: ink line with a hollow knob at the indent level. */
+.drop-line {
+  position: absolute;
+  left: var(--indent, 20px);
+  right: 4px;
+  height: 0;
+  border-top: 2px solid var(--ink);
+  pointer-events: none;
+  &::before {
+    content: "";
+    position: absolute;
+    left: -5px;
+    top: -5px;
+    width: 8px;
+    height: 8px;
+    border: 2px solid var(--ink);
+    border-radius: 50%;
+    background: var(--paper);
+  }
+}
+.drag-ghost {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  height: var(--row);
+  padding: 0 var(--s3);
+  border: 1px solid var(--ink);
+  border-radius: var(--r);
+  background: var(--paper);
+  box-shadow: var(--lift);
+  font: var(--t-ui-strong);
+  transform: rotate(-1.2deg);
+  pointer-events: none;
+}
+.tree-new {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--s2);
+  width: 100%;
+  height: var(--row);
+  margin-top: var(--s1);
+  padding: 0 var(--s2);
+  border: 0;
+  border-radius: var(--r);
+  background: none;
+  color: var(--ink-2);
+  font: var(--t-ui);
+  text-align: left;
+  cursor: pointer;
+}

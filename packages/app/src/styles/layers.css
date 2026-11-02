@@ -1,0 +1,207 @@
+/* Round 03: menus, popovers, dialogs, toasts, command palette. Every layer unfolds from its trigger. */
+.menu {
+  position: absolute;
+  z-index: 30;
+  min-width: 200px;
+  padding: 4px;
+  transform-origin: var(--origin, 0 0);
+  animation: unfold var(--d-menu) var(--ease-press) both;
+  & .mi {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: var(--s2);
+    width: 100%;
+    height: 30px;
+    padding: 0 var(--s2);
+    border: 0;
+    border-radius: 2px;
+    background: none;
+    color: var(--ink);
+    font: var(--t-ui);
+    text-align: left;
+    cursor: pointer;
+    &.is-active {
+      background: var(--sel);
+    }
+    position: relative;
+    &:hover {
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    &:has(.k) {
+      padding-right: 52px;
+    }
+    /* Out of flow so the hover underline does not reach it. */
+    & .k {
+      position: absolute;
+      right: var(--s2);
+      font: var(--t-mono);
+      color: var(--pencil);
+    }
+    & .g {
+      width: 16px;
+      color: var(--ink-2);
+      text-align: center;
+    }
+    &.is-danger,
+    &.is-danger .g {
+      color: var(--del-fg);
+    }
+  }
+  & hr {
+    margin: 4px 0;
+    border: 0;
+    border-top: 1px solid var(--hair);
+  }
+  & .mh {
+    padding: 6px var(--s2) 4px;
+    color: var(--ink-2);
+    font: var(--t-ui-strong);
+  }
+}
+@keyframes unfold {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.pop {
+  position: absolute;
+  z-index: 30;
+  width: 360px;
+  transform-origin: var(--origin, 100% 0);
+  animation: unfold var(--d-menu) var(--ease-press) both;
+  & > header {
+    padding: var(--s3) var(--s4);
+    border-bottom: 1px solid var(--hair);
+    & h2 {
+      margin: 0;
+      font: var(--t-ui-strong);
+    }
+  }
+  & > .pb {
+    padding: var(--s3) var(--s4);
+    & + .pb {
+      border-top: 1px solid var(--hair);
+    }
+  }
+  & > footer {
+    display: flex;
+    gap: var(--s2);
+    justify-content: flex-end;
+    padding: var(--s3) var(--s4);
+    border-top: 1px solid var(--hair);
+  }
+}
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: start center;
+  padding-top: 14vh;
+  background: var(--scrim);
+  animation: fade 200ms var(--ease-out) both;
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+.dialog {
+  width: min(480px, 100% - 32px);
+  animation: settle var(--d-settle) var(--ease-settle) both;
+  & > form {
+    display: contents;
+  }
+  & > header,
+  & > form > header {
+    padding: var(--s4) var(--s5) 0;
+    & h2 {
+      margin: 0;
+      font: var(--t-h2);
+    }
+    & p {
+      margin: var(--s1) 0 0;
+      color: var(--ink-2);
+    }
+  }
+  & > .db,
+  & > form > .db {
+    display: grid;
+    gap: var(--s4);
+    padding: var(--s4) var(--s5);
+  }
+  & > footer,
+  & > form > footer {
+    display: flex;
+    gap: var(--s2);
+    justify-content: flex-end;
+    padding: var(--s3) var(--s5) var(--s4);
+  }
+}
+@keyframes settle {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+
+.toasts {
+  position: fixed;
+  left: calc(var(--side-w) + var(--s4));
+  bottom: var(--s4);
+  z-index: 45;
+  display: grid;
+  gap: var(--s2);
+}
+.toast {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  min-width: 320px;
+  height: 44px;
+  padding: 0 var(--s2) 0 var(--s4);
+  overflow: hidden;
+  border-radius: var(--r);
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: 0 14px 36px -14px rgb(0 0 0 / 0.4);
+  animation: rise var(--d-settle) var(--ease-settle) both;
+  & .btn {
+    margin-left: auto;
+    border-color: rgb(255 255 255 / 0.4);
+    background: transparent;
+    color: var(--paper);
+    &:hover {
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+  }
+  &::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 2px;
+    width: 100%;
+    background: var(--paper);
+    transform-origin: 0 0;
+    animation: drain 6s linear both;
+  }
+}
+@keyframes drain {
+  to {
+    transform: scaleX(0);
+  }
+}

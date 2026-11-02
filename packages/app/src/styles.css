@@ -1,0 +1,13 @@
+/* Docleus Proof, round 03. Order matters: tokens, element defaults, then components. */
+@import "./styles/tokens.css";
+@import "./styles/compat.css";
+@import "./styles/shell.css";
+@import "./styles/bar.css";
+@import "./styles/tree.css";
+@import "./styles/layers.css";
+@import "./styles/status.css";
+@import "./styles/diff.css";
+@import "./styles/editor.css";
+@import "./styles/extras.css";
+@import "./styles/motion.css";
+@import "./styles/app.css";

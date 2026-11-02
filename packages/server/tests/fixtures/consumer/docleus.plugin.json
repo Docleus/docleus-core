@@ -1,0 +1,7 @@
+{
+  "name": "@test/consumer",
+  "version": "0.0.1",
+  "engines": { "docleus": "^0.0.1" },
+  "entries": { "server": "./index.js" },
+  "requires": ["test.hello"]
+}

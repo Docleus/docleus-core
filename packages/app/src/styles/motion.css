@@ -1,0 +1,382 @@
+/* Motion, alignment fixes and the small-screen layout.
+   Durations and curves come from tokens.css; reduced motion is handled there. */
+
+/* ---------- breadcrumbs: one separator rule; ancestors shrink before the current page ---------- */
+.bar .crumbs {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+}
+.bar .crumbs > * {
+  flex: none;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bar .crumbs > strong {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: none;
+}
+/* When space runs out, keep the first crumb and the page; the ones between collapse into "…". */
+@media (max-width: 1240px) {
+  .bar .crumbs > .cr-mid:not(:first-child):not(:nth-last-child(2)) {
+    display: none;
+  }
+  .bar .crumbs > .cr-mid:nth-last-child(2):not(:first-child)::before {
+    content: "/  …  /";
+    white-space: pre;
+  }
+}
+/* inline-block keeps the link underline off the separator. */
+.bar .crumbs > * + *::before,
+.bar .crumbs > .cr-mid::before {
+  display: inline-block;
+  text-decoration: none;
+}
+.bar .crumbs > * + *::before {
+  content: "/";
+  margin: 0 var(--s2);
+  color: var(--ink-3);
+}
+.has-panel .bar .crumbs > .cr-mid {
+  display: none;
+}
+.has-panel .bar .crumbs > strong::before {
+  content: none;
+}
+
+/* ---------- sliding plates (lib/motion.ts) ---------- */
+[data-plate] > :not(.plate) {
+  position: relative;
+}
+.plate {
+  inset-inline: auto;
+  left: 0;
+  width: var(--w, 100%);
+  background: var(--row-current);
+  transition:
+    transform var(--d-glide) var(--ease-glide),
+    width var(--d-glide) var(--ease-glide),
+    height var(--d-glide) var(--ease-glide),
+    opacity 120ms;
+}
+[data-plate] .side-link[aria-current="page"],
+[data-plate] .trow.is-current {
+  background: none;
+}
+.seg {
+  position: relative;
+}
+.seg > .plate {
+  background: var(--ink);
+  border-radius: 2px;
+}
+.seg[data-plate] button {
+  position: relative;
+  transition: color 160ms var(--ease-out);
+}
+.seg[data-plate] button[aria-pressed="true"] {
+  background: none;
+}
+
+/* ---------- arriving content ---------- */
+.page.doc,
+.dpage,
+.settings,
+.detail,
+.wrap,
+.home,
+.empty,
+.form-col .inner > div {
+  animation: rise var(--d-settle) var(--ease-settle) backwards;
+}
+.stagger {
+  animation: rise var(--d-settle) var(--ease-settle) backwards;
+  animation-delay: calc(min(var(--i, 0), 8) * var(--stagger));
+}
+.trow {
+  animation: row-in 180ms var(--ease-out) backwards;
+  transition: background-color 120ms var(--ease-out);
+}
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+.trow .chl,
+.panel .chl,
+.save-state .ic-check {
+  animation: pop 280ms var(--ease-press) backwards;
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+button.tag {
+  transition:
+    transform var(--d-press) var(--ease-press),
+    border-color 120ms;
+}
+button.tag:active {
+  transform: scale(0.96);
+  transition-duration: 80ms;
+}
+
+/* ---------- leaving: faster than arriving ---------- */
+.leave {
+  transition:
+    opacity 120ms var(--ease-exit),
+    transform 120ms var(--ease-exit);
+}
+.leave-from {
+  opacity: 1;
+}
+.leave-to {
+  opacity: 0;
+  transform: scale(0.98);
+}
+.scrim.leave-to {
+  transform: none;
+}
+.toast.is-out {
+  animation: toast-out 160ms var(--ease-exit) forwards;
+}
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* ---------- alignment ---------- */
+.row > .seg,
+.field > .seg,
+td .seg {
+  justify-self: start;
+  width: max-content;
+}
+.section > footer.savebar {
+  align-items: center;
+}
+.savebar .muted {
+  margin-right: auto;
+}
+.tbl td.act {
+  padding-right: 16px;
+  text-align: right;
+  white-space: nowrap;
+}
+.ptitle {
+  width: calc(100% + 7px);
+  margin-left: -7px;
+}
+
+/* ---------- small screens: the sidebar becomes a drawer ---------- */
+.nav-btn,
+.nav-scrim {
+  display: none;
+}
+@media (max-width: 819px) {
+  .app,
+  .app.has-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* One person per block: name and email, then role and action on one line. */
+  .table.members {
+    & thead {
+      display: none;
+    }
+    & tbody tr {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 2px var(--s3);
+      padding: var(--s2) 0;
+      border-bottom: 1px solid var(--hair);
+    }
+    & tbody td {
+      padding: 0;
+      border: 0;
+      overflow-wrap: anywhere;
+    }
+    & tbody td:nth-child(1) {
+      grid-area: 1 / 1;
+      font-weight: 600;
+    }
+    & tbody td:nth-child(2) {
+      grid-area: 2 / 1;
+      color: var(--ink-2);
+    }
+    & tbody td:nth-child(3) {
+      grid-area: 1 / 2;
+      justify-self: end;
+    }
+    & tbody td:nth-child(4) {
+      grid-area: 2 / 2;
+      justify-self: end;
+    }
+  }
+  .app > .side {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 60;
+    width: min(300px, 86vw);
+    transform: translateX(-102%);
+    transition: transform var(--d-glide) var(--ease-glide);
+  }
+  .app.nav-open > .side {
+    transform: none;
+    box-shadow: var(--lift);
+  }
+  .nav-btn {
+    display: inline-grid;
+    position: fixed;
+    top: 12px;
+    left: 10px;
+    z-index: 55;
+    width: 28px;
+    height: 28px;
+    background: var(--paper);
+  }
+  .app.nav-open > .nav-btn {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .nav-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 59;
+    background: var(--scrim);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 200ms var(--ease-out);
+  }
+  .app.nav-open > .nav-scrim {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .app > main:not(:has(> .bar)),
+  .app > main.acct {
+    padding-top: 56px;
+  }
+  .bar {
+    gap: var(--s2);
+    padding: 0 var(--s3) 0 48px;
+  }
+  .bar .crumbs > .cr-mid {
+    display: none;
+  }
+  .bar .crumbs > strong::before {
+    content: none;
+  }
+  .bar .tag,
+  .bar .save-state,
+  .bar .btn.is-quiet {
+    display: none;
+  }
+  .page {
+    width: calc(100% - 40px);
+    padding-top: var(--s5);
+  }
+  .settings,
+  .wrap,
+  .home,
+  .acct {
+    width: calc(100% - 32px);
+  }
+  .row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s2);
+  }
+  .home .spaces {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .work li {
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+  }
+  .work .where {
+    display: none;
+  }
+  .crs li {
+    grid-template-columns: 24px minmax(0, 1fr) auto;
+  }
+  .crs li > .res,
+  .crs li > .n {
+    display: none;
+  }
+  .filters {
+    flex-wrap: wrap;
+  }
+  .filters .input {
+    order: 3;
+    width: 100% !important;
+  }
+  .detail {
+    grid-template-columns: minmax(0, 1fr);
+    width: calc(100% - 32px);
+  }
+  .side-card {
+    position: static;
+  }
+  .panel {
+    position: fixed;
+    inset: 0 0 0 auto;
+    z-index: 50;
+    width: min(360px, 92vw);
+    box-shadow: var(--lift);
+  }
+  .tbl {
+    display: block;
+    overflow-x: auto;
+  }
+  .toasts {
+    left: 12px;
+    right: 12px;
+  }
+  .toast {
+    min-width: 0;
+  }
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .split .proof {
+    display: none;
+  }
+  .form-col {
+    padding: var(--s6) var(--s5);
+  }
+}
+a.tag {
+  text-decoration: none;
+}
+a.tag:hover,
+button.tag:hover {
+  border-color: var(--ink);
+}
+.bar button.tag.is-solid:hover {
+  border-color: var(--ink);
+}
+/* Every pill in the top bar is the same size, whether it is a button, a link or a label. */
+.bar .tag {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 13px;
+  box-sizing: border-box;
+  line-height: 24px;
+}
+/* A settings value that is plain text or a status, not a 32px control, sits on the label's first line. */
+.row > div:not(.label):not(:has(input, select, textarea, .btn, .seg, .switch)) {
+  padding-top: 6px;
+  line-height: 20px;
+}
+.settings h1:not(:has(+ .lead)) {
+  margin-bottom: var(--s6);
+}

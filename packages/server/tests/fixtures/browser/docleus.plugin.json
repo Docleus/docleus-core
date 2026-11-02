@@ -1,0 +1,7 @@
+{
+  "name": "@test/browser",
+  "version": "0.0.1",
+  "engines": { "docleus": "^0.0.1" },
+  "entries": { "editor": "./public/editor/index.js" },
+  "exposes": { "@test/browser-lib": "./public/lib.js" }
+}

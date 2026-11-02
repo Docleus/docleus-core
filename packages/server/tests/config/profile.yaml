@@ -1,0 +1,5 @@
+- id: http
+  config:
+    port: 8080
+- id: mermaid
+  plugin: "@docleus/plugin-mermaid"

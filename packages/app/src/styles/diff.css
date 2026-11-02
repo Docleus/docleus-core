@@ -1,0 +1,179 @@
+/* Round 03b: block diff, unified and split. Rows are blocks; words inside are highlighted. */
+.dfile {
+  margin-bottom: var(--s5);
+  border: 1px solid var(--hair-2);
+  border-radius: var(--r);
+  overflow: hidden;
+  & > header {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+    height: 40px;
+    padding: 0 var(--s3);
+    border-bottom: 1px solid var(--hair);
+    background: var(--rail);
+    & strong {
+      font: var(--t-ui-strong);
+    }
+    & .path {
+      color: var(--ink-2);
+    }
+    & .stat {
+      margin-left: auto;
+      font: var(--t-mono);
+      & .a {
+        color: var(--add-fg);
+      }
+      & .d {
+        color: var(--del-fg);
+        margin-left: 6px;
+      }
+    }
+  }
+}
+.drow {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  font: var(--t-read);
+  font-size: 15px;
+  line-height: 24px;
+  & > .sg {
+    padding-top: 6px;
+    color: var(--ink-2);
+    font: var(--t-mono);
+    text-align: center;
+    user-select: none;
+  }
+  & > .tx {
+    min-width: 0;
+    padding: 6px var(--s4) 6px 0;
+    & > :is(p, h2, h3, ul, blockquote) {
+      margin: 0;
+    }
+    & h2 {
+      font: var(--t-h2);
+      font-size: 18px;
+    }
+    & ul {
+      padding-left: 20px;
+    }
+    & .dtable {
+      border-collapse: collapse;
+      font: var(--t-ui);
+      & :is(th, td) {
+        padding: 4px 10px 4px 0;
+        border-bottom: 1px solid var(--hair);
+        text-align: left;
+        vertical-align: top;
+      }
+      & th {
+        font-weight: 600;
+        border-bottom-color: var(--ink);
+      }
+    }
+  }
+  &.is-add {
+    background: var(--add-bg);
+    & > .sg {
+      color: var(--add-fg);
+    }
+  }
+  &.is-del {
+    background: var(--del-bg);
+    & > .sg {
+      color: var(--del-fg);
+    }
+  }
+  &.is-fold > .tx {
+    color: var(--ink-2);
+    font: var(--t-ui);
+    padding-block: 4px;
+  }
+  &.is-fold {
+    background: var(--rail);
+    border-block: 1px solid var(--hair);
+    cursor: pointer;
+    &:hover {
+      color: var(--ink);
+    }
+  }
+  & code {
+    padding: 1px 4px;
+    border-radius: 2px;
+    background: rgb(17 17 17 / 0.06);
+    font: 400 0.82em/1 var(--f-mono);
+  }
+  & ins {
+    background: var(--add-hi);
+    border-radius: 2px;
+    text-decoration: none;
+  }
+  & del {
+    background: var(--del-hi);
+    border-radius: 2px;
+    color: inherit;
+    text-decoration: line-through;
+    text-decoration-color: var(--del-fg);
+  }
+}
+/* Split: old on the left, new on the right; a missing side is hatched. */
+.dsplit {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+
+  & > .drow:nth-child(odd) {
+    border-right: 1px solid var(--hair);
+  }
+  & > .drow.is-none {
+    background: repeating-linear-gradient(
+      -45deg,
+      transparent 0 5px,
+      var(--hair) 5px 6px
+    );
+  }
+  & > .drow.is-fold {
+    grid-column: 1 / -1;
+  }
+}
+.dtools {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin: 0 0 var(--s3);
+  & .muted {
+    margin-right: auto;
+  }
+}
+.seg {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--hair-2);
+  border-radius: var(--r);
+  & button {
+    height: 24px;
+    padding: 0 var(--s3);
+    border: 0;
+    border-radius: 2px;
+    background: none;
+    font: var(--t-ui);
+    cursor: pointer;
+  }
+  & button[aria-pressed="true"] {
+    background: var(--ink);
+    color: var(--paper);
+  }
+}
+.drow > .tx {
+  & pre {
+    padding: 6px 10px;
+    border-radius: var(--r);
+    background: rgb(17 17 17 / 0.05);
+    font: var(--t-mono);
+  }
+  & blockquote {
+    padding-left: var(--s3);
+    border-left: 2px solid var(--ink);
+    color: var(--ink-2);
+    font-style: italic;
+  }
+}

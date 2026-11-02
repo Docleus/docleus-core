@@ -1,0 +1,216 @@
+/* Round 03: space top bar, mode badge, page measure, settings layout. */
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  height: var(--bar);
+  padding: 0 var(--s4) 0 var(--s5);
+  border-bottom: 1px solid var(--hair);
+  background: rgb(255 255 255 / 0.92);
+  backdrop-filter: blur(8px);
+  & .crumbs {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+    min-width: 0;
+    color: var(--ink-2);
+    & a {
+      text-decoration: none;
+      &:hover {
+        color: var(--ink);
+        text-decoration: underline;
+      }
+    }
+    & strong {
+      overflow: hidden;
+      color: var(--ink);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+  & .spacer {
+    flex: 1;
+  }
+}
+
+/* Mode badge (legacy container). Status words now use .tag from status.css. */
+.mode {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  height: 26px;
+  padding: 0 var(--s2);
+  border: 1px solid var(--hair-2);
+  border-radius: var(--r);
+  background: var(--paper);
+  color: var(--ink);
+  font: var(--t-ui);
+  white-space: nowrap;
+  & .mono {
+    color: var(--ink-2);
+  }
+  &.is-button {
+    cursor: pointer;
+    &:hover {
+      border-color: var(--ink);
+    }
+  }
+}
+.save-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  &.is-dirty {
+    font-style: italic;
+  }
+  &.is-offline {
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+/* ---------- page measure ---------- */
+.page {
+  width: min(var(--measure), 100% - 2 * var(--s6));
+  margin: 0 auto;
+  padding: var(--s7) 0 120px;
+  & h1.title {
+    margin: 0;
+    font: var(--t-title);
+    outline: none;
+  }
+  & .desc {
+    margin: var(--s2) 0 0;
+    color: var(--ink-2);
+    font: 400 18px/28px var(--f-read);
+    outline: none;
+    &:empty::before {
+      content: attr(data-placeholder);
+      color: var(--ink-3);
+    }
+  }
+}
+.body {
+  margin-top: var(--s5);
+  font: var(--t-read);
+  & h2 {
+    margin: var(--s6) 0 var(--s2);
+    font: var(--t-h2);
+  }
+  & p {
+    margin: 0 0 var(--s4);
+  }
+  & ul {
+    margin: 0 0 var(--s4);
+    padding-left: 24px;
+  }
+  /* The same list rhythm as the published site: items 4px apart. */
+  & li :is(p, div) {
+    margin: 0;
+  }
+  & li + li {
+    margin-top: var(--s1);
+  }
+  & blockquote {
+    margin: 0 0 var(--s4);
+    padding-left: var(--s4);
+    border-left: 2px solid var(--ink);
+    color: var(--ink-2);
+    font-style: italic;
+    font-synthesis-style: none;
+  }
+  & pre {
+    margin: 0 0 var(--s4);
+    padding: var(--s3) var(--s4);
+    border-radius: var(--r);
+    background: var(--rail);
+    font: var(--t-mono);
+  }
+  & code {
+    padding: 1px 4px;
+    border-radius: 2px;
+    background: var(--rail);
+    font: 400 14px/1 var(--f-mono);
+  }
+}
+
+/* ---------- settings layout ---------- */
+.settings {
+  width: min(760px, 100% - 2 * var(--s6));
+  margin: 0 auto;
+  padding: var(--s6) 0 120px;
+  & h1 {
+    margin: 0 0 var(--s2);
+    font: var(--t-page);
+  }
+  & .lead {
+    margin: 0 0 var(--s6);
+    color: var(--ink-2);
+  }
+}
+.section {
+  margin-bottom: var(--s6);
+  border: 1px solid var(--hair);
+  border-radius: var(--r);
+  & > header {
+    display: flex;
+    align-items: center;
+    gap: var(--s3);
+    padding: var(--s3) var(--s4);
+    border-bottom: 1px solid var(--hair);
+    & h2 {
+      margin: 0;
+      font: var(--t-ui-strong);
+    }
+    & .hint {
+      color: var(--ink-2);
+    }
+    & .btn {
+      margin-left: auto;
+    }
+  }
+  & > footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--s2);
+    padding: var(--s3) var(--s4);
+    border-top: 1px solid var(--hair);
+    background: var(--rail);
+  }
+  /* Solid: a dashed outline means "draft" or "not published" elsewhere. */
+  &.is-danger {
+    border-color: var(--ink);
+  }
+}
+.row {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: var(--s4);
+  align-items: start;
+  padding: var(--s4);
+  & + .row {
+    border-top: 1px solid var(--hair);
+  }
+  & > .label {
+    padding-top: 6px;
+    & strong {
+      display: block;
+      font: var(--t-ui-strong);
+    }
+    & small {
+      display: block;
+      margin-top: 2px;
+      color: var(--ink-2);
+    }
+  }
+  & .input {
+    width: 100%;
+    max-width: 360px;
+  }
+}

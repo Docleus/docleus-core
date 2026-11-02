@@ -1,0 +1,29 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      '@test/greeting':
+        specifier: file:./deps/greeting
+        version: file:deps/greeting
+    devDependencies:
+      '@docleus/config':
+        specifier: link:../docleus-core/packages/config
+        version: link:../docleus-core/packages/config
+      '@docleus/sdk':
+        specifier: link:../docleus-core/packages/sdk
+        version: link:../docleus-core/packages/sdk
+
+packages:
+
+  '@test/greeting@file:deps/greeting':
+    resolution: {directory: deps/greeting, type: directory}
+
+snapshots:
+
+  '@test/greeting@file:deps/greeting': {}

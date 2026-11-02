@@ -1,0 +1,7 @@
+{
+  "name": "@test/syntax-b",
+  "version": "0.0.1",
+  "engines": { "docleus": "^0.0.1" },
+  "entries": { "server": "./index.js" },
+  "syntax": ["directive:note"]
+}

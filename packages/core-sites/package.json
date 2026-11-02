@@ -1,0 +1,40 @@
+{
+  "name": "@docleus/core-sites",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Default sites: sites, publications, immutable artifacts, rollback and serving.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@docleus/core-render": "workspace:*",
+    "@docleus/sdk": "workspace:*",
+    "kysely": "0.29.7",
+    "uuid": "14.0.3",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@docleus/conformance": "workspace:*",
+    "@docleus/core-blobs": "workspace:*",
+    "@docleus/core-blocks": "workspace:*",
+    "@docleus/core-content": "workspace:*",
+    "@docleus/core-installations": "workspace:*",
+    "@docleus/core-storage": "workspace:*",
+    "@docleus/kernel": "workspace:*",
+    "@docleus/testing": "workspace:*",
+    "vitest": "5.0.5"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Docleus/docleus-core.git",
+    "directory": "packages/core-sites"
+  }
+}

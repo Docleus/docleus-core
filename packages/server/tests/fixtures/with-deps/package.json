@@ -1,0 +1,19 @@
+{
+  "name": "@test/with-deps",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare": "exit 1"
+  },
+  "peerDependencies": {
+    "@docleus/sdk": "^0.0.1"
+  },
+  "dependencies": {
+    "@test/greeting": "file:./deps/greeting"
+  },
+  "devDependencies": {
+    "@docleus/config": "link:../docleus-core/packages/config",
+    "@docleus/sdk": "link:../docleus-core/packages/sdk"
+  }
+}

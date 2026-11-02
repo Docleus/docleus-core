@@ -1,0 +1,6 @@
+{
+  "name": "@test/too-new",
+  "version": "0.0.1",
+  "engines": { "docleus": "^9.0" },
+  "entries": { "server": "./index.js" }
+}

@@ -1,0 +1,47 @@
+{
+  "name": "docleus-core",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.21.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "tsc -b tsconfig.json packages/app/tsconfig.json packages/core-sites/tsconfig.dom.json",
+    "lint": "oxlint -c packages/config/oxlintrc.json --ignore-pattern \"**/vendor/**\" --ignore-pattern \"**/dist/**\" --ignore-pattern \"**/dist-site/**\" packages",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "deps": "depcruise packages --config packages/config/dependency-cruiser.cjs",
+    "license": "license-checker-rseidelsohn --summary --onlyAllow \"MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;0BSD;BlueOak-1.0.0;CC0-1.0;Python-2.0;CC-BY-3.0;(MIT AND CC-BY-3.0)\" --excludePrivatePackages --excludePackages \"lightningcss@1.33.0\"",
+    "test": "pnpm -r test",
+    "test:pg": "DOCLEUS_TEST_POSTGRES_URL=${DOCLEUS_TEST_POSTGRES_URL:-postgres://docleus:docleus@127.0.0.1:55432/postgres} pnpm -r test",
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm deps && pnpm license && pnpm test",
+    "docleus": "node scripts/dev.ts",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "vite": "8.3.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@types/node": "24.19.2",
+    "dependency-cruiser": "18.7.0",
+    "license-checker-rseidelsohn": "5.0.1",
+    "oxlint": "1.89.0",
+    "prettier": "3.9.10",
+    "tsdown": "0.23.1",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Docleus/docleus-core.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Docleus/docleus-core/issues"
+  },
+  "homepage": "https://github.com/Docleus/docleus-core#readme",
+  "description": "Docleus kernel, plugin SDK, core services, CLI, and browser host."
+}

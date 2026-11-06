@@ -36,6 +36,7 @@ export function listen(
 ): Promise<Listening> {
   const hostname = options.hostname ?? "127.0.0.1";
   const upgraded = new Set<Duplex>();
+  const unused = new Set<Duplex>();
   return new Promise((resolveListening) => {
     const server: ServerType = serve(
       {
@@ -51,6 +52,11 @@ export function listen(
       },
       (info: AddressInfo) => {
         const fallbackHost = `${hostname}:${info.port}`;
+        server.on("connection", (socket) => {
+          unused.add(socket);
+          socket.once("data", () => unused.delete(socket));
+          socket.once("close", () => unused.delete(socket));
+        });
         server.on(
           "upgrade",
           (incoming: IncomingMessage, socket: Duplex, head: Buffer) => {
@@ -75,6 +81,8 @@ export function listen(
           close: () =>
             new Promise<void>((resolveClose, reject) => {
               server.close((error) => (error ? reject(error) : resolveClose()));
+              // Node's idle HTTP cleanup leaves connections with no request open.
+              for (const socket of unused) socket.destroy();
               // `close` waits for every connection to end, and upgraded
               // sockets (WebSockets) stay open until their peer leaves.
               for (const socket of upgraded) socket.destroy();

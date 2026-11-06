@@ -1,4 +1,6 @@
 import { request as httpRequest } from "node:http";
+import { once } from "node:events";
+import { createConnection, type Socket } from "node:net";
 import type { Duplex } from "node:stream";
 import type { Context } from "@docleus/kernel";
 import { afterEach, describe, expect, it } from "vitest";
@@ -7,9 +9,11 @@ import { account, bootWith } from "./helpers.ts";
 
 const instances: Instance[] = [];
 const servers: Listening[] = [];
+const sockets: Socket[] = [];
 const boot = bootWith(instances);
 
 afterEach(async () => {
+  for (const socket of sockets.splice(0)) socket.destroy();
   await Promise.all(servers.splice(0).map((server) => server.close()));
   await Promise.all(instances.splice(0).map((instance) => instance.dispose()));
 });
@@ -67,6 +71,14 @@ function readOnce(socket: Duplex): Promise<string> {
   return new Promise((resolve) =>
     socket.once("data", (data: Buffer) => resolve(data.toString())),
   );
+}
+
+function deferred(): { promise: Promise<void>; resolve: () => void } {
+  let resolve: () => void = () => undefined;
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
 }
 
 async function served() {
@@ -144,5 +156,75 @@ describe("listen", () => {
     );
     await servers.splice(0)[0]?.close();
     await closed;
+  });
+
+  it("closes connections that have not sent an HTTP request", async () => {
+    const { server } = await served();
+    const socket = createConnection({
+      host: "127.0.0.1",
+      port: Number(new URL(server.url).port),
+    });
+    sockets.push(socket);
+    await once(socket, "connect");
+    const response = await fetch(`${server.url}/api/auth/methods`);
+    await response.arrayBuffer();
+    const closed = once(socket, "close");
+    servers.splice(servers.indexOf(server), 1);
+    await server.close();
+    await closed;
+  });
+
+  it("finishes an active HTTP response while closing unused connections", async () => {
+    const { instance, server } = await served();
+    const started = deferred();
+    const release = deferred();
+    instance.ctx.http.route(
+      "GET",
+      "/api/slow",
+      async () => {
+        started.resolve();
+        await release.promise;
+        return new Response("completed");
+      },
+      { public: true },
+    );
+    const response = fetch(`${server.url}/api/slow`);
+    await started.promise;
+    const socket = createConnection({
+      host: "127.0.0.1",
+      port: Number(new URL(server.url).port),
+    });
+    sockets.push(socket);
+    await once(socket, "connect");
+    const ready = await fetch(`${server.url}/api/auth/methods`);
+    await ready.arrayBuffer();
+    const closed = once(socket, "close");
+    servers.splice(servers.indexOf(server), 1);
+    const closing = server.close();
+    try {
+      await closed;
+    } finally {
+      release.resolve();
+    }
+    expect(await (await response).text()).toBe("completed");
+    await closing;
+  });
+
+  it("finishes the HTTP request that initiates shutdown", async () => {
+    const { instance, server } = await served();
+    let closing: Promise<void> | undefined;
+    instance.ctx.http.route(
+      "GET",
+      "/api/stop",
+      () => {
+        servers.splice(servers.indexOf(server), 1);
+        closing = server.close();
+        return new Response("completed");
+      },
+      { public: true },
+    );
+    const response = await fetch(`${server.url}/api/stop`);
+    expect(await response.text()).toBe("completed");
+    await closing;
   });
 });

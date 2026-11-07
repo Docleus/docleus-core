@@ -1,6 +1,6 @@
 {
   "name": "@docleus/kernel",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "type": "module",
   "description": "Vendored, pinned Cordis plus the Docleus config loader.",

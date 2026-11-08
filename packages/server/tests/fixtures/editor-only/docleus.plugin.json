@@ -1,6 +1,6 @@
 {
   "name": "@test/editor-only",
   "version": "0.0.1",
-  "engines": { "docleus": ">=0.0.1 <0.0.3" },
+  "engines": { "docleus": ">=0.0.1 <0.0.4" },
   "entries": { "editor": "./editor.js" }
 }

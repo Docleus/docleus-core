@@ -1,6 +1,6 @@
 {
   "name": "@docleus/testing",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "private": true,
   "type": "module",
   "description": "Test helpers: in-memory instances, per-test storage (SQLite or Postgres), and Markdown round-trip checks.",

@@ -311,6 +311,7 @@ export function registerContentApi(ctx: Context): void {
         );
       }
       await ctx.content.deleteOrg(orgId);
+      await ctx.authz.revokeAll({ kind: "org", orgId });
       return new Response(null, { status: 204 });
     }),
   );
@@ -331,6 +332,11 @@ export function registerContentApi(ctx: Context): void {
     handle(ctx, async (context) => {
       const space = await requireSpace(ctx, context, "manage");
       await ctx.content.deleteSpace(space.id);
+      await ctx.authz.revokeAll({
+        kind: "space",
+        orgId: space.orgId,
+        spaceId: space.id,
+      });
       return new Response(null, { status: 204 });
     }),
   );

@@ -1,4 +1,11 @@
-import { existsSync, mkdtempSync, readdirSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  mkdirSync,
+  writeFileSync,
+} from "node:fs";
 import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -120,5 +127,93 @@ describe("backups before migrations", () => {
       platform: "0.0.1",
     });
     expect(boot.backup).toBeUndefined();
+  });
+
+  it.each([
+    Buffer.from('{"platform":'),
+    Buffer.from(""),
+    Buffer.from('{"platform":42,"plugins":[]}'),
+    Buffer.from([0xff, 0xfe]),
+  ])(
+    "backs up the database and invalid state bytes before recovery: %s",
+    async (raw) => {
+      const dir = dataDir();
+      createDatabase(join(dir, "docleus.db"), "before");
+      const path = join(dir, "boot-state.json");
+      writeFileSync(path, raw);
+      const options = {
+        dataDir: dir,
+        database: undefined,
+        plugins: PLUGINS,
+        platform: "0.0.7",
+      };
+      const boot = await prepareBoot(options);
+      expect(boot.backup).toBeDefined();
+      expect(valueIn(boot.backup ?? "")).toBe("before");
+      expect(readFileSync(`${boot.backup}.boot-state.json`)).toEqual(raw);
+      expect(readFileSync(path)).toEqual(raw);
+      await boot.finish();
+      expect(JSON.parse(readFileSync(path, "utf8"))).toEqual(
+        bootStateOf(options.platform, PLUGINS),
+      );
+      expect((await prepareBoot(options)).backup).toBeUndefined();
+      expect(readFileSync(`${boot.backup}.boot-state.json`)).toEqual(raw);
+    },
+  );
+
+  it("keeps the malformed state when the database backup fails", async () => {
+    const dir = dataDir();
+    writeFileSync(join(dir, "docleus.db"), "not a SQLite database");
+    const raw = '{"platform":';
+    const path = join(dir, "boot-state.json");
+    writeFileSync(path, raw);
+    await expect(
+      prepareBoot({
+        dataDir: dir,
+        database: undefined,
+        plugins: [],
+        platform: "0.0.7",
+      }),
+    ).rejects.toThrow("file is not a database");
+    expect(readFileSync(path, "utf8")).toBe(raw);
+  });
+
+  it("stops before recovery when preserving invalid state bytes fails", async () => {
+    const dir = dataDir();
+    const database = join(dir, "docleus.db");
+    createDatabase(database, "before");
+    const raw = '{"platform":';
+    writeFileSync(join(dir, "boot-state.json"), raw);
+    mkdirSync(join(dir, "backups"));
+    const target = join(dir, "backups", "docleus-2026-10-27T100000Z.db");
+    writeFileSync(`${target}.boot-state.json`, "keep existing evidence");
+    await expect(
+      backupBeforeMigrating({
+        dataDir: dir,
+        database,
+        state: bootStateOf("0.0.7", []),
+        now: new Date("2026-10-27T10:00:00.123Z"),
+      }),
+    ).rejects.toMatchObject({ code: "EEXIST" });
+    expect(valueIn(target)).toBe("before");
+    expect(readFileSync(`${target}.boot-state.json`, "utf8")).toBe(
+      "keep existing evidence",
+    );
+    expect(readFileSync(join(dir, "boot-state.json"), "utf8")).toBe(raw);
+  });
+
+  it("does not treat a state-file read failure as unknown versions", async () => {
+    const dir = dataDir();
+    createDatabase(join(dir, "docleus.db"), "before");
+    mkdirSync(join(dir, "boot-state.json"));
+    await expect(
+      prepareBoot({
+        dataDir: dir,
+        database: undefined,
+        plugins: [],
+        platform: "0.0.7",
+      }),
+    ).rejects.toMatchObject({ code: "EISDIR" });
+    expect(existsSync(join(dir, "backups"))).toBe(false);
   });
 });

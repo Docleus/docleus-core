@@ -24,13 +24,22 @@ export function bootStateOf(
   };
 }
 
-function readBootState(dataDir: string): BootState | undefined {
+function readBootState(dataDir: string): {
+  readonly state?: BootState;
+  readonly invalid?: Buffer;
+} {
   const path = join(dataDir, BOOT_STATE_FILE);
-  if (!existsSync(path)) return undefined;
-  const result = BootStateSchema.safeParse(
-    JSON.parse(readFileSync(path, "utf8")),
-  );
-  return result.success ? result.data : undefined;
+  if (!existsSync(path)) return {};
+  const raw = readFileSync(path);
+  let value: unknown;
+  try {
+    value = JSON.parse(raw.toString("utf8")) as unknown;
+  } catch (error) {
+    if (!(error instanceof SyntaxError)) throw error;
+    return { invalid: raw };
+  }
+  const result = BootStateSchema.safeParse(value);
+  return result.success ? { state: result.data } : { invalid: raw };
 }
 
 export async function writeBootState(
@@ -60,7 +69,7 @@ export async function backupBeforeMigrating(options: {
   const { dataDir, database, state } = options;
   if (!existsSync(database)) return undefined;
   const previous = readBootState(dataDir);
-  if (previous && isSameState(previous, state)) return undefined;
+  if (previous.state && isSameState(previous.state, state)) return undefined;
   const stamp = (options.now ?? new Date())
     .toISOString()
     .replaceAll(":", "")
@@ -76,6 +85,11 @@ export async function backupBeforeMigrating(options: {
     db.prepare("VACUUM INTO ?").run(target);
   } finally {
     db.close();
+  }
+  if (previous.invalid) {
+    await writeFile(`${target}.boot-state.json`, previous.invalid, {
+      flag: "wx",
+    });
   }
   return target;
 }

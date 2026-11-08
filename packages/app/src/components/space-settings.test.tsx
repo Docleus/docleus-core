@@ -1,5 +1,5 @@
 import { Context, type Space } from "@docleus/sdk";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HostContext, type Host } from "../lib/host.tsx";
 import { createToastStore } from "../lib/toasts.ts";
 import { createUiService } from "../lib/ui-service.ts";
@@ -100,6 +100,7 @@ const siteSection = () => {
 
 describe("SpaceSettings", () => {
   it("names the live site in words and lists history newest first", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(new Date(2026, 10, 9, 12).getTime());
     await render(status());
     const section = siteSection();
     expect(section.querySelector(".section-tag")?.textContent).toBe("Live");

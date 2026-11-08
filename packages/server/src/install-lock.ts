@@ -33,17 +33,6 @@ const migrations: readonly Migration[] = [
   },
 ];
 
-// Read back rather than counting affected rows, which the SQLite
-// adapter does not report.
-async function holderOf(db: Db): Promise<string | undefined> {
-  const row = await db
-    .selectFrom("plugin_install_lock")
-    .select("holder")
-    .where("key", "=", KEY)
-    .executeTakeFirst();
-  return row?.holder;
-}
-
 export interface InstallLockOptions {
   /** How long a lease lasts without renewal, so a crashed holder frees it. */
   readonly leaseMs?: number;
@@ -56,13 +45,23 @@ export interface InstallLockOptions {
 }
 
 export interface InstallLock {
-  /** Runs `task` while holding the lease, waiting for any other holder first. */
-  run<T>(task: () => Promise<T>): Promise<T>;
+  /** Runs `task` with a lease check to await before each shared mutation. */
+  run<T>(task: (check: CheckInstallLease) => Promise<T>): Promise<T>;
 }
+
+export type CheckInstallLease = () => Promise<void>;
 
 const DEFAULT_LEASE_MS = 60_000;
 const DEFAULT_WAIT_MS = 15 * 60_000;
 const DEFAULT_POLL_MS = 250;
+
+async function release(db: Db, holder: string): Promise<void> {
+  await db
+    .deleteFrom("plugin_install_lock")
+    .where("key", "=", KEY)
+    .where("holder", "=", holder)
+    .execute();
+}
 
 /**
  * A lease in `ctx.storage` that every process on the database shares, so
@@ -93,10 +92,9 @@ export function createInstallLock(
     return storage.db as unknown as Db;
   }
 
-  async function tryAcquire(holder: string): Promise<boolean> {
-    const db = await database();
+  async function tryAcquire(db: Db, holder: string): Promise<boolean> {
     const now = Date.now();
-    await db
+    const row = await db
       .insertInto("plugin_install_lock")
       .values({ key: KEY, holder, expires_at: now + leaseMs })
       .onConflict((oc) =>
@@ -105,37 +103,35 @@ export function createInstallLock(
           .doUpdateSet({ holder, expires_at: now + leaseMs })
           .where("plugin_install_lock.expires_at", "<=", now),
       )
-      .execute();
-    return (await holderOf(db)) === holder;
+      .returning("holder")
+      .executeTakeFirst();
+    return row?.holder === holder;
   }
 
-  async function renew(holder: string): Promise<void> {
-    const db = await database();
-    await db
+  async function renew(db: Db, holder: string): Promise<void> {
+    const now = Date.now();
+    const row = await db
       .updateTable("plugin_install_lock")
-      .set({ expires_at: Date.now() + leaseMs })
+      .set({ expires_at: now + leaseMs })
       .where("key", "=", KEY)
       .where("holder", "=", holder)
-      .execute();
-    if ((await holderOf(db)) !== holder) {
-      logger.warn("lost the plugin install lease");
+      .where("expires_at", ">", now)
+      .returning("holder")
+      .executeTakeFirst();
+    if (!row || Date.now() >= now + leaseMs) {
+      throw new DocleusError(
+        "plugin/install-lease-lost",
+        "the plugin install lease was lost; restart from the current deployment config before retrying",
+      );
     }
-  }
-
-  async function release(holder: string): Promise<void> {
-    const db = await database();
-    await db
-      .deleteFrom("plugin_install_lock")
-      .where("key", "=", KEY)
-      .where("holder", "=", holder)
-      .execute();
   }
 
   return {
     async run(task) {
+      const db = await database();
       const holder = randomUUID();
       const deadline = Date.now() + waitMs;
-      while (!(await tryAcquire(holder))) {
+      while (!(await tryAcquire(db, holder))) {
         if (Date.now() >= deadline) {
           throw new DocleusError(
             "plugin/install-busy",
@@ -144,19 +140,53 @@ export function createInstallLock(
         }
         await sleep(pollMs);
       }
+      let renewal: Promise<void> | undefined;
+      let failure: DocleusError | undefined;
+      const check: CheckInstallLease = async () => {
+        if (failure) throw failure;
+        renewal ??= renew(db, holder)
+          .catch((cause: unknown) => {
+            failure = new DocleusError(
+              "plugin/install-lease-lost",
+              "cannot confirm the plugin install lease; restart from the current deployment config before retrying",
+              { cause },
+            );
+            throw failure;
+          })
+          .finally(() => {
+            renewal = undefined;
+          });
+        await renewal;
+      };
       const stopRenewing = ctx.effect(() => {
         const timer = setInterval(() => {
-          renew(holder).catch((error: unknown) => {
+          if (failure) return;
+          check().catch((error: unknown) => {
             logger.warn("cannot renew the plugin install lease: %s", error);
           });
         }, renewMs);
-        return () => clearInterval(timer);
+        return async () => {
+          clearInterval(timer);
+          await renewal?.catch(() => undefined);
+        };
       }, "plugin install lease");
       try {
-        return await task();
+        await check();
+        const result = await task(check);
+        await check();
+        return result;
+      } catch (error) {
+        await check();
+        throw error;
       } finally {
         await stopRenewing();
-        await release(holder);
+        await release(db, holder).catch((error: unknown) => {
+          if (!failure) throw error;
+          logger.warn(
+            "cannot release the lost plugin install lease: %s",
+            error,
+          );
+        });
       }
     },
   };

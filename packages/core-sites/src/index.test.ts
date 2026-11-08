@@ -471,6 +471,40 @@ describe("artifact contents", () => {
     );
     expect(await response.text()).toContain("First");
   });
+
+  it("publishes the merge result but rejects its branch snapshot after branch deletion", async () => {
+    const harness = await freshSites();
+    const { site, spaces } = await seed(harness, {
+      docs: { home: page("First", 0) },
+    });
+    const spaceId = spaces[0]?.spaceId ?? "";
+    const first = await harness.content.head(spaceId);
+    await harness.content.createBranch({ spaceId, name: "cr/1" });
+    const draft = await harness.content.commit({
+      spaceId,
+      branch: "cr/1",
+      parent: first?.id,
+      put: { home: page("Merged", 0) },
+      message: "Draft",
+    });
+    const merged = await harness.content.commit({
+      spaceId,
+      parent: first?.id,
+      put: { home: page("Merged", 0) },
+      merged: draft.id,
+      message: "Merge",
+    });
+    await harness.content.deleteBranch(spaceId, "cr/1");
+    expect(await harness.content.getRevision(draft.id)).toBeDefined();
+    await expect(
+      harness.sites.publish(site.id, { revisions: { [spaceId]: draft.id } }),
+    ).rejects.toMatchObject({ code: "sites/invalid-revision" });
+    expect(await harness.sites.listPublications(site.id)).toEqual([]);
+    const publication = await harness.sites.publish(site.id, {
+      revisions: { [spaceId]: merged.id },
+    });
+    expect(publication.revisions).toEqual({ [spaceId]: merged.id });
+  });
 });
 
 describe("error codes", () => {

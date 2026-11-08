@@ -321,6 +321,30 @@ export const sitesConformanceSuite = defineConformanceSuite<SitesSubject>(
       },
     },
     {
+      name: "publishing rejects branch revisions and preserves the active main publication",
+      async check(subject) {
+        const { site, space, head } = await setUp(subject);
+        const { content, sites } = subject;
+        const live = await sites.publish(site.id);
+        await content.createBranch({ spaceId: space.id, name: "cr/1" });
+        const draft = await content.commit({
+          spaceId: space.id,
+          branch: "cr/1",
+          parent: head.id,
+          put: { intro: page("Unreviewed draft", 0) },
+          message: "Draft",
+        });
+        await expect(
+          sites.publish(site.id, { revisions: { [space.id]: draft.id } }),
+        ).rejects.toMatchObject({ code: "sites/invalid-revision" });
+        expect((await sites.get(site.id))?.active).toBe(live.id);
+        expect(await sites.listPublications(site.id)).toHaveLength(1);
+        const published = await sites.publish(site.id);
+        expect(published.revisions).toEqual({ [space.id]: head.id });
+        expect(published.artifact).toBe(live.artifact);
+      },
+    },
+    {
       name: "the artifact maps every page to its file, and identical inputs give an identical artifact",
       async check(subject) {
         const { site } = await setUp(subject);

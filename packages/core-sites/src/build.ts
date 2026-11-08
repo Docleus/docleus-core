@@ -1,5 +1,6 @@
 import {
   DocleusError,
+  MAIN_BRANCH,
   escapeHtml,
   escapeScriptJson,
   type Context,
@@ -105,10 +106,10 @@ async function resolveRevisions(
       continue;
     }
     const revision = await ctx.content.getRevision(wanted);
-    if (revision?.spaceId !== spaceId) {
+    if (revision?.spaceId !== spaceId || revision.branch !== MAIN_BRANCH) {
       throw new DocleusError(
         "sites/invalid-revision",
-        `revision "${wanted}" is not a revision of space "${spaceId}"`,
+        `revision "${wanted}" is not a main-branch revision of space "${spaceId}"`,
       );
     }
     revisions[spaceId] = revision.id;

@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync } from "node:fs";
 import { cp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 import { testStorageDialect, testStorageLocation } from "@docleus/testing";
 import { sql } from "kysely";
 import { afterEach, describe, expect, it } from "vitest";
@@ -184,6 +185,61 @@ function stamp(instance: Instance): string {
 }
 
 describe("plugin installation", () => {
+  it.each([true, false])(
+    "checks the lease after runtime storage replacement (same database: %s)",
+    async (sameDatabase) => {
+      const { instance, admin, dataDir, configFile } = await bootData();
+      const previousConfig = existsSync(configFile)
+        ? readFileSync(configFile, "utf8")
+        : undefined;
+      const files = installable();
+      const manifest = JSON.parse(
+        files["docleus.plugin.json"] ?? "{}",
+      ) as Record<string, unknown>;
+      files["docleus.plugin.json"] = JSON.stringify({
+        ...manifest,
+        provides: ["storage"],
+      });
+      const storageModule = fileURLToPath(
+        new URL("../../core-storage/src/index.ts", import.meta.url),
+      );
+      files["server/index.js"] = `
+      import { definePlugin } from "@docleus/sdk";
+      import { createStorageService } from ${JSON.stringify(storageModule)};
+      export const plugin = definePlugin({
+        name: "@test/installable", inject: [],
+        apply(ctx) {
+          ctx.provide("storage", createStorageService(ctx, ${JSON.stringify(join(dataDir, sameDatabase ? "docleus.db" : "unrelated.db"))}));
+        }
+      });
+    `;
+
+      const response = await upload(instance, admin, npmPack(files));
+      if (!sameDatabase) {
+        expect(response.status).toBe(409);
+        expect(await response.json()).toMatchObject({
+          code: "plugin/install-lease-lost",
+        });
+        expect(
+          existsSync(configFile) ? readFileSync(configFile, "utf8") : undefined,
+        ).toBe(previousConfig);
+        expect(await instance.ctx.installations.isInstalled(NAME)).toBe(false);
+        expect(existsSync(installedDir(dataDir))).toBe(true);
+        return;
+      }
+      expect(response.status, await response.clone().text()).toBe(201);
+      expect(await instance.ctx.installations.isInstalled(NAME)).toBe(true);
+      expect(parse(readFileSync(configFile, "utf8"))).toMatchObject({
+        plugins: [{ id: NAME }],
+      });
+      expect(
+        (await admin.api.call("DELETE", `/api/plugins/${ENCODED}`)).status,
+      ).toBe(204);
+      expect(await instance.ctx.installations.isInstalled(NAME)).toBe(false);
+      expect(parse(readFileSync(configFile, "utf8"))).toEqual({ plugins: [] });
+    },
+  );
+
   it.each([false, true])(
     "stops after a takeover during plugin apply (replacement: %s)",
     async (replacement) => {

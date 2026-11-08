@@ -1,6 +1,6 @@
 {
   "name": "@docleus/core-installations",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "private": true,
   "type": "module",
   "description": "Default installations: install, enable, settings and scoped dispatch.",

@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" /></a>
-  <img alt="Public preview in preparation" src="https://img.shields.io/badge/preview-0.0.6-cfcfcf?style=flat-square" />
+  <img alt="Public preview in preparation" src="https://img.shields.io/badge/preview-0.0.7-cfcfcf?style=flat-square" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square" />
   <a href="https://docleus.io"><img alt="Online documentation" src="https://img.shields.io/badge/docs-docleus.io-111111?style=flat-square" /></a>
 </p>
@@ -29,7 +29,7 @@ Docleus is an open-source, self-hosted documentation platform with GitBook-like 
 
 This repository contains the kernel, the plugin SDK, and the core plugins. Official plugins and the distribution live in separate repositories.
 
-Status: preparing patch release `0.0.6`. All SDK extension points
+Status: preparing patch release `0.0.7`. All SDK extension points
 remain experimental before 1.0. Packages are private and are developed from
 side-by-side source checkouts; no npm installation is required or advertised.
 See the [distribution](https://github.com/Docleus/docleus) for deployment and

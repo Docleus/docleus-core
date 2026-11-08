@@ -765,7 +765,7 @@ describe("plugin installation", () => {
       "docleus.plugin.json": JSON.stringify({
         name: "@test/clash",
         version: "1.0.0",
-        engines: { docleus: ">=0.0.1 <0.0.7" },
+        engines: { docleus: ">=0.0.1 <0.0.8" },
         entries: { editor: "./editor.js" },
         exposes: { "@test/browser-lib": "./lib.js" },
       }),

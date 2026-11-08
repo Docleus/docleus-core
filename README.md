@@ -138,6 +138,14 @@ The `docleus` repository has the Docker image, compose templates and the deploym
 
 Instance admins install plugins at runtime through the Plugins tab of the instance settings, or `POST /api/instance/plugins`, from an uploaded `npm pack` tarball, a path on the server, or `{ git, ref }` (shallow clone, built with `pnpm install --frozen-lockfile && pnpm build` when `dist/` is missing). A plugin is unpacked into `<data>/plugins/<name>@<version>/`, recorded in the deployment config as `{ name, version, source, sha256 }`, and mounted without a restart; uninstalling unmounts it the same way. Tarballs must be self-contained: server entries bundle their runtime dependencies or ship `node_modules`, and only the host modules (`@docleus/sdk` and the import map) are provided. Organizations enable installed plugins explicitly.
 
+If recording an installation or uninstall in the database fails, the previous
+runtime plugins and deployment config are restored before staged files are
+removed. A failed replacement keeps the previous version's files. A failed
+uninstall preserves the existing database settings through its transaction.
+If restoring the runtime or config also fails, `plugin/rollback-failed` retains
+the plugin files for manual recovery; this is not a transaction across the
+filesystem and database.
+
 ## Accounts
 
 Without `--dev`, an instance that has no users logs a one-time setup token on boot; open `/setup` and enter it to create the first instance administrator. Users sign in with a password or through identity provider plugins such as `docleus-plugin-auth-oidc`; the browser keeps an `HttpOnly` session cookie, and API clients can send the session token as a `Bearer` token instead. Cookie-authenticated writes from another site are rejected.

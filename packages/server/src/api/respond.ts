@@ -60,6 +60,7 @@ const STATUS_BY_SUFFIX: readonly (readonly [string, number])[] = [
   ["/island-conflict", 409],
   ["/install-failed", 422],
   ["/load-failed", 422],
+  ["/rollback-failed", 500],
 ];
 
 export function json(

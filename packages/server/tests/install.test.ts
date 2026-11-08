@@ -4,6 +4,7 @@ import { cp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { testStorageDialect, testStorageLocation } from "@docleus/testing";
+import { sql } from "kysely";
 import { afterEach, describe, expect, it } from "vitest";
 import { parse } from "yaml";
 import type { Instance } from "../src/index.ts";
@@ -183,6 +184,160 @@ function stamp(instance: Instance): string {
 }
 
 describe("plugin installation", () => {
+  it("restores the runtime and deployment after recording an install fails", async () => {
+    const { instance, admin, dataDir, configFile } = await bootData();
+    await sql
+      .raw(
+        "CREATE TRIGGER fail_install BEFORE INSERT ON installations WHEN NEW.plugin = '@test/installable' BEGIN SELECT RAISE(FAIL, 'injected installation failure'); END",
+      )
+      .execute(instance.ctx.storage.db);
+
+    expect((await upload(instance, admin, npmPack(installable()))).status).toBe(
+      500,
+    );
+    expect(instance.plugins.has(NAME)).toBe(false);
+    expect(instance.ctx.blocks.isKnown("test.stamp")).toBe(false);
+    expect(await instance.ctx.installations.isInstalled(NAME)).toBe(false);
+    expect(parse(readFileSync(configFile, "utf8"))).toEqual({ plugins: [] });
+    expect(readdirSync(join(dataDir, "plugins"))).toEqual(["node_modules"]);
+
+    await sql.raw("DROP TRIGGER fail_install").execute(instance.ctx.storage.db);
+    expect((await upload(instance, admin, npmPack(installable()))).status).toBe(
+      201,
+    );
+    await instance.dispose();
+    instances.splice(instances.indexOf(instance), 1);
+    const restarted = await boot({ dataDir, configFile });
+    expect(restarted.plugins.has(NAME)).toBe(true);
+    expect(stamp(restarted)).toBe('<p class="test-stamp">&lt;hi&gt;</p>');
+  });
+
+  it("keeps the previous plugin and files after recording a replacement fails", async () => {
+    const { instance, admin, dataDir, configFile } = await bootData();
+    expect((await upload(instance, admin, npmPack(installable()))).status).toBe(
+      201,
+    );
+    const previousDir = installedDir(dataDir);
+    const previousConfig = readFileSync(configFile, "utf8");
+    await sql
+      .raw(
+        "CREATE TRIGGER fail_install BEFORE INSERT ON installations WHEN NEW.plugin = '@test/installable' BEGIN SELECT RAISE(FAIL, 'injected replacement failure'); END",
+      )
+      .execute(instance.ctx.storage.db);
+
+    expect(
+      (await upload(instance, admin, npmPack(restyled("replacement")))).status,
+    ).toBe(500);
+    expect(stamp(instance)).toBe('<p class="test-stamp">&lt;hi&gt;</p>');
+    expect(instance.plugins.get(NAME)?.dir).toBe(previousDir);
+    expect(installedDir(dataDir)).toBe(previousDir);
+    expect(readFileSync(configFile, "utf8")).toBe(previousConfig);
+    expect(await instance.ctx.installations.isInstalled(NAME)).toBe(true);
+  });
+
+  it("restores an uninstall whose database transaction fails without losing settings", async () => {
+    const { instance, admin, dataDir, configFile } = await bootData();
+    expect((await upload(instance, admin, npmPack(installable()))).status).toBe(
+      201,
+    );
+    const org = await instance.ctx.content.createOrg({
+      slug: "acme",
+      name: "Acme",
+    });
+    const scope = { kind: "org", orgId: org.id } as const;
+    await instance.ctx.installations.setEnabled(NAME, scope, true);
+    await instance.ctx.installations.setSettings(NAME, scope, {
+      greeting: "keep",
+    });
+    const previousConfig = readFileSync(configFile, "utf8");
+    const previousDir = installedDir(dataDir);
+    await sql
+      .raw(
+        "CREATE TRIGGER fail_uninstall BEFORE DELETE ON installations WHEN OLD.plugin = '@test/installable' BEGIN SELECT RAISE(FAIL, 'injected uninstall failure'); END",
+      )
+      .execute(instance.ctx.storage.db);
+
+    expect(
+      (await admin.api.call("DELETE", `/api/plugins/${ENCODED}`)).status,
+    ).toBe(500);
+    expect(instance.plugins.has(NAME)).toBe(true);
+    expect(stamp(instance)).toBe('<p class="test-stamp">&lt;hi&gt;</p>');
+    expect(readFileSync(configFile, "utf8")).toBe(previousConfig);
+    expect(installedDir(dataDir)).toBe(previousDir);
+    expect(await instance.ctx.installations.isInstalled(NAME)).toBe(true);
+    expect(await instance.ctx.installations.isEnabled(NAME, scope)).toBe(true);
+    expect(await instance.ctx.installations.getSettings(NAME, scope)).toEqual({
+      greeting: "keep",
+    });
+
+    await sql
+      .raw("DROP TRIGGER fail_uninstall")
+      .execute(instance.ctx.storage.db);
+    expect(
+      (await admin.api.call("DELETE", `/api/plugins/${ENCODED}`)).status,
+    ).toBe(204);
+    expect(existsSync(previousDir)).toBe(false);
+  });
+
+  it("restores the fresh deployment from another process after a failed install", async () => {
+    const { instance, admin, dataDir, configFile } = await bootData();
+    const second = await boot({ dataDir, configFile, role: "web" });
+    expect((await upload(instance, admin, npmPack(installable()))).status).toBe(
+      201,
+    );
+    const previousConfig = readFileSync(configFile, "utf8");
+    const previousDir = installedDir(dataDir);
+    await sql
+      .raw(
+        "CREATE TRIGGER fail_second BEFORE INSERT ON installations WHEN NEW.plugin = '@test/second' BEGIN SELECT RAISE(FAIL, 'injected second installation failure'); END",
+      )
+      .execute(second.ctx.storage.db);
+
+    expect(
+      (await upload(second, admin, npmPack(renamed("@test/second")))).status,
+    ).toBe(500);
+    expect(second.plugins.has("@test/second")).toBe(false);
+    expect(second.plugins.has(NAME)).toBe(true);
+    expect(stamp(second)).toBe('<p class="test-stamp">&lt;hi&gt;</p>');
+    expect(readFileSync(configFile, "utf8")).toBe(previousConfig);
+    expect(installedDir(dataDir)).toBe(previousDir);
+  });
+
+  it("retains plugin files when restoring the config also fails", async () => {
+    const { instance, admin, dataDir, configFile } = await bootData();
+    const files = installable();
+    files["server/index.js"] =
+      'import { mkdirSync, rmSync } from "node:fs";\n' +
+      (files["server/index.js"] ?? "")
+        .replace(
+          'inject: ["blocks", "render"]',
+          'inject: ["blocks", "render", "installations"]',
+        )
+        .replace(
+          "apply(ctx) {",
+          `apply(ctx) {
+          const installations = ctx.installations;
+          const install = installations.install;
+          ctx.effect(() => {
+            installations.install = async () => {
+              rmSync(${JSON.stringify(configFile)});
+              mkdirSync(${JSON.stringify(configFile)});
+              throw new Error("injected database and config recovery failure");
+            };
+            return () => { installations.install = install; };
+          });`,
+        );
+
+    const response = await upload(instance, admin, npmPack(files));
+    expect(response.status).toBe(500);
+    expect(await response.json()).toMatchObject({
+      code: "plugin/rollback-failed",
+    });
+    expect(existsSync(join(installedDir(dataDir), "server/index.js"))).toBe(
+      true,
+    );
+  });
+
   it("installs an uploaded tarball without a restart and uninstalls it", async () => {
     const { instance, admin, dataDir, configFile } = await bootData();
     const { orgId, space } = await setUpSpace(admin.api);

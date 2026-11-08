@@ -55,6 +55,9 @@ export interface PluginManager {
    *
    * Installs and uninstalls run one at a time across every process on the
    * database, each on the deployment config as the file holds it then.
+   * A failed database record restores the previous runtime and config.
+   * If restoration fails too, files are retained for manual recovery and
+   * the operation rejects with `plugin/rollback-failed`.
    */
   install(request: InstallRequest): Promise<ListedPlugin>;
   /** Unmounts a runtime-installed plugin, forgets its settings and removes its files. */
@@ -162,7 +165,11 @@ export function createPluginManager(
    * go first, so that the plugin can provide the key, and the providers of
    * keys no plugin provides any more come back after.
    */
-  async function mount(next: readonly DeploymentPluginRow[]): Promise<void> {
+  async function mount(
+    next: readonly DeploymentPluginRow[],
+    base: readonly DeploymentPluginRow[] = deployment,
+    record?: () => Promise<void>,
+  ): Promise<void> {
     const before = providedBy(plugins);
     const after = providedBy(mountedOf(next));
     try {
@@ -170,15 +177,24 @@ export function createPluginManager(
       await host.apply(compose(next));
       await core.sync(after);
       await save(next);
+      await record?.();
     } catch (error) {
       try {
-        await core.sync([...before, ...after]);
-        await host.apply(compose(deployment));
-        await core.sync(before);
+        const restored = providedBy(mountedOf(base));
+        await core.sync([...before, ...after, ...restored]);
+        await host.apply(compose(base));
+        await core.sync(restored);
+        await save(base);
+        adopt([...base]);
       } catch (rollback) {
         logger.error(
           "cannot restore plugins after a failed change: %s",
           rollback,
+        );
+        throw new DocleusError(
+          "plugin/rollback-failed",
+          "cannot restore plugins after a failed change; retain the plugin files for recovery",
+          { cause: new AggregateError([error, rollback]) },
         );
       }
       throw error;
@@ -236,7 +252,7 @@ export function createPluginManager(
       if (previous?.sha256 === staged.sha256 && mounted?.dir === dir) {
         // Installed with these contents already, by this process or another.
         if (plugins.get(name)?.dir !== dir) {
-          await mount(base);
+          await mount(base, base);
           adopt([...base]);
         }
         return present(name, mounted);
@@ -262,15 +278,22 @@ export function createPluginManager(
       const next = previous
         ? base.map((r) => (r === previous ? row : r))
         : [...base, row];
-      await mount(next);
+      await mount(next, base, () => ctx.installations.install(name));
       adopt(next);
-      await ctx.installations.install(name);
       target = undefined;
       if (mounted && mounted.dir !== dir) {
         await rm(mounted.dir, { recursive: true, force: true });
       }
       logger.info("installed %s@%s", name, version);
       return present(name, { manifest: staged.manifest, dir });
+    } catch (error) {
+      if (
+        error instanceof DocleusError &&
+        error.code === "plugin/rollback-failed"
+      ) {
+        target = undefined;
+      }
+      throw error;
     } finally {
       await rm(staging, { recursive: true, force: true });
       if (target) await rm(target, { recursive: true, force: true });
@@ -295,9 +318,8 @@ export function createPluginManager(
           );
     }
     const next = base.filter((r) => r !== row);
-    await mount(next);
+    await mount(next, base, () => ctx.installations.uninstall(name));
     adopt(next);
-    await ctx.installations.uninstall(name);
     if (mounted) await rm(mounted.dir, { recursive: true, force: true });
     logger.info("uninstalled %s", name);
   }

@@ -20,7 +20,11 @@ import {
 import type { Frontend, MountedPlugin } from "./frontend.ts";
 import type { PluginHost } from "./host.ts";
 import { removeShippedHostModules } from "./host-modules.ts";
-import { createInstallLock, type InstallLockOptions } from "./install-lock.ts";
+import {
+  createInstallLock,
+  type CheckInstallLease,
+  type InstallLockOptions,
+} from "./install-lock.ts";
 import {
   stagePlugin,
   type InstallRequest,
@@ -132,14 +136,18 @@ export function createPluginManager(
 
   /** One at a time in this process, then one at a time across processes. */
   function serially<T>(
-    task: (base: readonly DeploymentPluginRow[]) => Promise<T>,
+    task: (
+      base: readonly DeploymentPluginRow[],
+      check: CheckInstallLease,
+    ) => Promise<T>,
   ): Promise<T> {
     const run = queue.then(() =>
-      lock.run(() =>
+      lock.run((check) =>
         // Another process may have installed or removed plugins since this
         // one last read the file; building on a stale list would drop them.
         task(
           configFile ? readDeploymentConfig(configFile).plugins : deployment,
+          check,
         ),
       ),
     );
@@ -167,26 +175,45 @@ export function createPluginManager(
    */
   async function mount(
     next: readonly DeploymentPluginRow[],
-    base: readonly DeploymentPluginRow[] = deployment,
+    base: readonly DeploymentPluginRow[],
+    check: CheckInstallLease,
     record?: () => Promise<void>,
   ): Promise<void> {
     const before = providedBy(plugins);
     const after = providedBy(mountedOf(next));
     try {
+      await check();
       await core.sync([...before, ...after]);
+      await check();
       await host.apply(compose(next));
+      await check();
       await core.sync(after);
+      await check();
       await save(next);
+      await check();
       await record?.();
+      await check();
     } catch (error) {
+      // A stale holder must not restore its snapshot over the new owner.
+      await check();
       try {
         const restored = providedBy(mountedOf(base));
         await core.sync([...before, ...after, ...restored]);
+        await check();
         await host.apply(compose(base));
+        await check();
         await core.sync(restored);
+        await check();
         await save(base);
+        await check();
         adopt([...base]);
       } catch (rollback) {
+        if (
+          rollback instanceof DocleusError &&
+          rollback.code === "plugin/install-lease-lost"
+        ) {
+          throw rollback;
+        }
         logger.error(
           "cannot restore plugins after a failed change: %s",
           rollback,
@@ -228,11 +255,13 @@ export function createPluginManager(
   async function install(
     request: InstallRequest,
     base: readonly DeploymentPluginRow[],
+    check: CheckInstallLease,
   ): Promise<ListedPlugin> {
     const staging = join(pluginsDir, `.staging-${randomUUID()}`);
     let target: string | undefined;
     try {
       const staged = await stagePlugin(staging, request, options);
+      await check();
       const { name, version } = staged.manifest;
       const previous = base.find(
         (row) => row.id === name && isInstalledRow(row),
@@ -252,7 +281,7 @@ export function createPluginManager(
       if (previous?.sha256 === staged.sha256 && mounted?.dir === dir) {
         // Installed with these contents already, by this process or another.
         if (plugins.get(name)?.dir !== dir) {
-          await mount(base, base);
+          await mount(base, base, check);
           adopt([...base]);
         }
         return present(name, mounted);
@@ -263,7 +292,9 @@ export function createPluginManager(
       frontend.check(nextPlugins);
 
       await removeShippedHostModules(staging);
+      await check();
       await rm(dir, { recursive: true, force: true });
+      await check();
       await rename(staging, dir);
       target = dir;
 
@@ -278,10 +309,11 @@ export function createPluginManager(
       const next = previous
         ? base.map((r) => (r === previous ? row : r))
         : [...base, row];
-      await mount(next, base, () => ctx.installations.install(name));
+      await mount(next, base, check, () => ctx.installations.install(name));
       adopt(next);
       target = undefined;
       if (mounted && mounted.dir !== dir) {
+        await check();
         await rm(mounted.dir, { recursive: true, force: true });
       }
       logger.info("installed %s@%s", name, version);
@@ -289,20 +321,32 @@ export function createPluginManager(
     } catch (error) {
       if (
         error instanceof DocleusError &&
-        error.code === "plugin/rollback-failed"
+        (error.code === "plugin/rollback-failed" ||
+          error.code === "plugin/install-lease-lost")
       ) {
         target = undefined;
+      } else {
+        try {
+          await check();
+        } catch (lost) {
+          target = undefined;
+          throw lost;
+        }
       }
       throw error;
     } finally {
       await rm(staging, { recursive: true, force: true });
-      if (target) await rm(target, { recursive: true, force: true });
+      if (target) {
+        await check();
+        await rm(target, { recursive: true, force: true });
+      }
     }
   }
 
   async function uninstall(
     name: string,
     base: readonly DeploymentPluginRow[],
+    check: CheckInstallLease,
   ): Promise<void> {
     const row = base.find((r) => r.id === name && isInstalledRow(r));
     const mounted = mountedOf(base).get(name);
@@ -318,16 +362,21 @@ export function createPluginManager(
           );
     }
     const next = base.filter((r) => r !== row);
-    await mount(next, base, () => ctx.installations.uninstall(name));
+    await mount(next, base, check, () => ctx.installations.uninstall(name));
     adopt(next);
-    if (mounted) await rm(mounted.dir, { recursive: true, force: true });
+    if (mounted) {
+      await check();
+      await rm(mounted.dir, { recursive: true, force: true });
+    }
     logger.info("uninstalled %s", name);
   }
 
   return {
     rows: () => compose(deployment),
     list: () => [...plugins].map(([name, plugin]) => present(name, plugin)),
-    install: (request) => serially((base) => install(request, base)),
-    uninstall: (name) => serially((base) => uninstall(name, base)),
+    install: (request) =>
+      serially((base, check) => install(request, base, check)),
+    uninstall: (name) =>
+      serially((base, check) => uninstall(name, base, check)),
   };
 }

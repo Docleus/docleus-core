@@ -184,6 +184,106 @@ function stamp(instance: Instance): string {
 }
 
 describe("plugin installation", () => {
+  it.each([false, true])(
+    "stops after a takeover during plugin apply (replacement: %s)",
+    async (replacement) => {
+      const { instance, admin, dataDir, configFile } = await bootData();
+      if (replacement) {
+        expect(
+          (await upload(instance, admin, npmPack(installable()))).status,
+        ).toBe(201);
+      }
+      const previousDir = replacement ? installedDir(dataDir) : undefined;
+      const previousConfig = existsSync(configFile)
+        ? readFileSync(configFile, "utf8")
+        : "plugins: []\n";
+      const currentConfig =
+        previousConfig + "publicUrl: https://other-owner.test\n";
+      const files = restyled("takeover");
+      files["server/index.js"] =
+        'import { writeFileSync } from "node:fs";\n' +
+        (files["server/index.js"] ?? "")
+          .replace(
+            'inject: ["blocks", "render"]',
+            'inject: ["blocks", "render", "storage"]',
+          )
+          .replace(
+            "apply(ctx) {",
+            `async apply(ctx) {
+              await ctx.storage.db.updateTable("plugin_install_lock")
+                .set({ holder: "other-holder" }).where("key", "=", "plugins").execute();
+              writeFileSync(${JSON.stringify(configFile)}, ${JSON.stringify(currentConfig)});`,
+          );
+
+      const response = await upload(instance, admin, npmPack(files));
+      expect(response.status).toBe(409);
+      expect(await response.json()).toMatchObject({
+        code: "plugin/install-lease-lost",
+      });
+      expect(readFileSync(configFile, "utf8")).toBe(currentConfig);
+      expect(await instance.ctx.installations.isInstalled(NAME)).toBe(
+        replacement,
+      );
+      expect(
+        readdirSync(join(dataDir, "plugins")).filter(
+          (dir) => dir !== "node_modules",
+        ),
+      ).toHaveLength(replacement ? 2 : 1);
+      if (previousDir) expect(existsSync(previousDir)).toBe(true);
+      const result = await sql<{ holder: string }>`
+        SELECT holder FROM plugin_install_lock WHERE key = 'plugins'
+      `.execute(instance.ctx.storage.db);
+      expect(result.rows).toEqual([{ holder: "other-holder" }]);
+    },
+  );
+
+  it("stops an uninstall after takeover without restoring stale config or deleting files and settings", async () => {
+    const { instance, admin, dataDir, configFile } = await bootData();
+    const currentConfig = "publicUrl: https://other-owner.test\nplugins: []\n";
+    const files = installable();
+    files["server/index.js"] =
+      'import { writeFileSync } from "node:fs";\n' +
+      (files["server/index.js"] ?? "")
+        .replace(
+          'inject: ["blocks", "render"]',
+          'inject: ["blocks", "render", "storage"]',
+        )
+        .replace(
+          "apply(ctx) {",
+          `apply(ctx) {
+            const db = ctx.storage.db;
+            ctx.effect(() => async () => {
+              await db.updateTable("plugin_install_lock")
+                .set({ holder: "other-holder" }).where("key", "=", "plugins").execute();
+              writeFileSync(${JSON.stringify(configFile)}, ${JSON.stringify(currentConfig)});
+            });`,
+        );
+    expect((await upload(instance, admin, npmPack(files))).status).toBe(201);
+    const previousDir = installedDir(dataDir);
+    const org = await instance.ctx.content.createOrg({
+      slug: "acme",
+      name: "Acme",
+    });
+    const scope = { kind: "org", orgId: org.id } as const;
+    await instance.ctx.installations.setEnabled(NAME, scope, true);
+    await instance.ctx.installations.setSettings(NAME, scope, {
+      greeting: "keep",
+    });
+
+    const response = await admin.api.call("DELETE", `/api/plugins/${ENCODED}`);
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({
+      code: "plugin/install-lease-lost",
+    });
+    expect(readFileSync(configFile, "utf8")).toBe(currentConfig);
+    expect(existsSync(previousDir)).toBe(true);
+    expect(await instance.ctx.installations.isInstalled(NAME)).toBe(true);
+    expect(await instance.ctx.installations.isEnabled(NAME, scope)).toBe(true);
+    expect(await instance.ctx.installations.getSettings(NAME, scope)).toEqual({
+      greeting: "keep",
+    });
+  });
+
   it("restores the runtime and deployment after recording an install fails", async () => {
     const { instance, admin, dataDir, configFile } = await bootData();
     await sql

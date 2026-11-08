@@ -146,6 +146,15 @@ If restoring the runtime or config also fails, `plugin/rollback-failed` retains
 the plugin files for manual recovery; this is not a transaction across the
 filesystem and database.
 
+Installation tasks check their database lease before shared mutations. A
+takeover, expired lease or failed renewal stops further work with
+`plugin/install-lease-lost` (HTTP 409). The stale task does not roll back the
+deployment or remove plugin files, because another process may now own them.
+Restart from the current deployment config and inspect retained files before
+retrying. These checks cannot cancel an already running plugin callback or
+filesystem/database operation; they do not provide atomic fencing across those
+systems.
+
 ## Accounts
 
 Without `--dev`, an instance that has no users logs a one-time setup token on boot; open `/setup` and enter it to create the first instance administrator. Users sign in with a password or through identity provider plugins such as `docleus-plugin-auth-oidc`; the browser keeps an `HttpOnly` session cookie, and API clients can send the session token as a `Bearer` token instead. Cookie-authenticated writes from another site are rejected.

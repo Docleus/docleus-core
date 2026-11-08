@@ -1,7 +1,7 @@
 {
   "name": "@test/site",
   "version": "0.0.1",
-  "engines": { "docleus": ">=0.0.1 <0.0.5" },
+  "engines": { "docleus": ">=0.0.1 <0.0.6" },
   "entries": { "server": "./index.js", "site": "./public/site/index.js" },
   "islands": { "test.counter": "./public/site/counter.js" }
 }

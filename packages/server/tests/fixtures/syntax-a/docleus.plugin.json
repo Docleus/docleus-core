@@ -1,7 +1,7 @@
 {
   "name": "@test/syntax-a",
   "version": "0.0.1",
-  "engines": { "docleus": ">=0.0.1 <0.0.5" },
+  "engines": { "docleus": ">=0.0.1 <0.0.6" },
   "entries": { "server": "./index.js" },
   "syntax": ["directive:note"]
 }

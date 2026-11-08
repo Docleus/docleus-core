@@ -144,6 +144,10 @@ Without `--dev`, an instance that has no users logs a one-time setup token on bo
 
 Roles depend on the scope and are inherited downward: instance `admin`; org `owner`, `admin` and `member` (read-only); space `admin`, `editor` and `viewer`. A space grant also allows reading its org. Org owners and admins invite people with a link, which is also emailed when SMTP is configured.
 
+Deleting a space through the API removes its role grants before returning success. Deleting an organization also removes its grants and those of every space in it. Grants for other organizations, sibling spaces and the instance remain intact.
+
+On startup, the server replays deletion events from the content log before registering the API, removing grants left by earlier versions. Later deletions through the content service are also replayed; their cleanup can be awaited with `ctx.content.catchUp("@docleus/server/deleted-scope-grants")`.
+
 `docleus serve` options for accounts:
 
 - `--public-url <url>`: the origin used in invitation links and the setup hint.

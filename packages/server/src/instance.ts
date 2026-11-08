@@ -22,6 +22,7 @@ import { registerBlobCollector } from "./blob-gc.ts";
 import { resolveBlobSecret } from "./blob-secret.ts";
 import { mountCoreProviders } from "./core-providers.ts";
 import { readDeploymentConfig, type Role } from "./deployment-config.ts";
+import { registerDeletedScopeGrants } from "./deleted-scope-grants.ts";
 import {
   createFrontend,
   type Frontend,
@@ -262,7 +263,8 @@ async function bootInstance(
       "installations",
       "sites",
     ],
-    apply(ctx: Context) {
+    async apply(ctx: Context) {
+      await registerDeletedScopeGrants(ctx);
       const serial = createSerializer();
       registerAuthApi(ctx, {
         isDev: options.isDev === true,

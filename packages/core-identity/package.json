@@ -1,6 +1,6 @@
 {
   "name": "@docleus/core-identity",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "private": true,
   "type": "module",
   "description": "Default identity: users with argon2id passwords, hashed expiring sessions, invitations, provider registry.",

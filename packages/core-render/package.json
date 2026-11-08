@@ -1,6 +1,6 @@
 {
   "name": "@docleus/core-render",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "private": true,
   "type": "module",
   "description": "Default render: block renderer registry with safe placeholders.",

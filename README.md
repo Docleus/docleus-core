@@ -202,7 +202,7 @@ Every space and page route takes `?branch=<name>`; `GET /api/orgs/<org>/spaces/<
 
 ## Publishing
 
-`ctx.sites` turns spaces into static sites. A site belongs to an org, maps one or more spaces to path prefixes, and has a theme and an optional custom domain. `publish` renders every page at the given revisions (default: each space's head), stores an immutable artifact (`/index.html` per page, `/404.html`, the site runtime under `_assets/docleus/`, and the site files of enabled plugins under `_assets/plugins/<name>@<version>/`), and makes it active. `activate` serves an earlier publication again without rebuilding it. Identical inputs give an identical artifact.
+`ctx.sites` turns spaces into static sites. A site belongs to an org, maps one or more spaces to path prefixes, and has a theme and an optional custom domain. `publish` renders every page at the given main-branch revisions (default: each space's main head), stores an immutable artifact (`/index.html` per page, `/404.html`, the site runtime under `_assets/docleus/`, and the site files of enabled plugins under `_assets/plugins/<name>@<version>/`), and makes it active. Older main revisions are valid; branch revisions are rejected with `sites/invalid-revision`, including after branch deletion or merge. Publish the resulting main revision after a merge. `activate` serves an earlier publication again without rebuilding it. Identical inputs give an identical artifact.
 
 Org managers manage sites through the API; site responses include the site's `url`:
 

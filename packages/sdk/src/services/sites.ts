@@ -142,7 +142,9 @@ export interface SitesService {
 
   /**
    * Renders every page of the site's spaces at `revisions` (default: each
-   * space's head), stores the artifact, records the publication, and makes
+   * space's main head). Explicit revisions must belong to that space's
+   * main branch; older main revisions remain valid. Stores the artifact,
+   * records the publication, and makes
    * it active by appending {@link SITE_PUBLISHED}. Publishes of one site
    * run one at a time.
    */

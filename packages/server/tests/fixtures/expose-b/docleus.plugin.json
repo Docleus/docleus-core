@@ -1,7 +1,7 @@
 {
   "name": "@test/expose-b",
   "version": "0.0.1",
-  "engines": { "docleus": ">=0.0.1 <0.0.7" },
+  "engines": { "docleus": ">=0.0.1 <0.0.8" },
   "entries": { "editor": "./editor.js" },
   "exposes": { "@test/lib": "./lib-b.js" }
 }

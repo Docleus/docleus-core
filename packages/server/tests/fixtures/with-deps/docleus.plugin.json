@@ -1,6 +1,6 @@
 {
   "name": "@test/with-deps",
   "version": "1.0.0",
-  "engines": { "docleus": ">=0.0.1 <0.0.3" },
+  "engines": { "docleus": ">=0.0.1 <0.0.4" },
   "entries": { "server": "./server/index.js" }
 }

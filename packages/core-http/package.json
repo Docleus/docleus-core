@@ -1,6 +1,6 @@
 {
   "name": "@docleus/core-http",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "private": true,
   "type": "module",
   "description": "Default http: Hono route registry with bearer and cookie authentication, a cross-site check, and atomic router replacement.",

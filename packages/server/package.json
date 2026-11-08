@@ -1,6 +1,6 @@
 {
   "name": "@docleus/server",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "private": true,
   "type": "module",
   "description": "Server shell: instance boot, instance API, plugin host, frontend serving, and the dump-config command.",

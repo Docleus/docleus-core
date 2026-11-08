@@ -7,7 +7,7 @@
     "prepare": "exit 1"
   },
   "peerDependencies": {
-    "@docleus/sdk": ">=0.0.1 <0.0.6"
+    "@docleus/sdk": ">=0.0.1 <0.0.7"
   },
   "dependencies": {
     "@test/greeting": "file:./deps/greeting"

@@ -181,13 +181,31 @@ export function createPluginManager(
   ): Promise<void> {
     const before = providedBy(plugins);
     const after = providedBy(mountedOf(next));
+    let storage = [...plugins.values()].find(({ manifest }) =>
+      manifest.provides.includes("storage"),
+    )?.dir;
+    async function applyRuntime(
+      rows: readonly DeploymentPluginRow[],
+      provided: readonly string[],
+    ): Promise<void> {
+      const nextStorage = [...mountedOf(rows).values()].find(({ manifest }) =>
+        manifest.provides.includes("storage"),
+      )?.dir;
+      const changesStorage = storage !== nextStorage;
+      const apply = async () => {
+        await core.sync(provided);
+        if (!changesStorage) await check();
+        await host.apply(compose(rows));
+        if (!changesStorage) await check();
+        await core.sync(providedBy(mountedOf(rows)));
+      };
+      if (changesStorage) await check.replaceStorage(apply);
+      else await apply();
+      storage = nextStorage;
+    }
     try {
       await check();
-      await core.sync([...before, ...after]);
-      await check();
-      await host.apply(compose(next));
-      await check();
-      await core.sync(after);
+      await applyRuntime(next, [...before, ...after]);
       await check();
       await save(next);
       await check();
@@ -198,11 +216,7 @@ export function createPluginManager(
       await check();
       try {
         const restored = providedBy(mountedOf(base));
-        await core.sync([...before, ...after, ...restored]);
-        await check();
-        await host.apply(compose(base));
-        await check();
-        await core.sync(restored);
+        await applyRuntime(base, [...before, ...after, ...restored]);
         await check();
         await save(base);
         await check();

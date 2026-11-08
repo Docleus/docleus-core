@@ -203,6 +203,27 @@ describe("install lock", () => {
     expect(result.rows).toEqual([{ holder: "other-holder" }]);
   });
 
+  it("defers renewal during storage handoff but checks the lease before later writes", async () => {
+    const { ctx } = await storage();
+    const lock = createInstallLock(ctx, { renewMs: 5 });
+    let mutated = false;
+    await expect(
+      lock.run(async (check) => {
+        await check.replaceStorage(async () => {
+          await sql`UPDATE plugin_install_lock SET holder = 'other-holder'`.execute(
+            ctx.storage.db,
+          );
+          await new Promise((done) => setTimeout(done, 30));
+          expect(
+            ctx.logger.buffer.some((message) => message.type === "warn"),
+          ).toBe(false);
+        });
+        mutated = true;
+      }),
+    ).rejects.toMatchObject({ code: "plugin/install-lease-lost" });
+    expect(mutated).toBe(false);
+  });
+
   it("keeps the lease while the holder renews it", async () => {
     const { ctx } = await storage();
     const holder = createInstallLock(ctx, { leaseMs: 200, renewMs: 20 });

@@ -155,6 +155,11 @@ retrying. These checks cannot cancel an already running plugin callback or
 filesystem/database operation; they do not provide atomic fencing across those
 systems.
 
+A runtime storage-provider handoff drains renewal first and checks ownership
+again through the replacement service before writing the deployment or
+installation record. It must reopen the same database with the same unexpired
+lease row; switching to an unrelated database does not acquire a new lease.
+
 ## Accounts
 
 Without `--dev`, an instance that has no users logs a one-time setup token on boot; open `/setup` and enter it to create the first instance administrator. Users sign in with a password or through identity provider plugins such as `docleus-plugin-auth-oidc`; the browser keeps an `HttpOnly` session cookie, and API clients can send the session token as a `Bearer` token instead. Cookie-authenticated writes from another site are rejected.

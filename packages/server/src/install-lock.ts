@@ -49,7 +49,11 @@ export interface InstallLock {
   run<T>(task: (check: CheckInstallLease) => Promise<T>): Promise<T>;
 }
 
-export type CheckInstallLease = () => Promise<void>;
+export interface CheckInstallLease {
+  (): Promise<void>;
+  /** Checks before and after a storage handoff, draining renewal before it. */
+  replaceStorage(task: () => Promise<void>): Promise<void>;
+}
 
 const DEFAULT_LEASE_MS = 60_000;
 const DEFAULT_WAIT_MS = 15 * 60_000;
@@ -108,7 +112,8 @@ export function createInstallLock(
     return row?.holder === holder;
   }
 
-  async function renew(db: Db, holder: string): Promise<void> {
+  async function renew(holder: string): Promise<Db> {
+    const db = await database();
     const now = Date.now();
     const row = await db
       .updateTable("plugin_install_lock")
@@ -124,11 +129,12 @@ export function createInstallLock(
         "the plugin install lease was lost; restart from the current deployment config before retrying",
       );
     }
+    return db;
   }
 
   return {
     async run(task) {
-      const db = await database();
+      let db = await database();
       const holder = randomUUID();
       const deadline = Date.now() + waitMs;
       while (!(await tryAcquire(db, holder))) {
@@ -142,25 +148,43 @@ export function createInstallLock(
       }
       let renewal: Promise<void> | undefined;
       let failure: DocleusError | undefined;
-      const check: CheckInstallLease = async () => {
-        if (failure) throw failure;
-        renewal ??= renew(db, holder)
-          .catch((cause: unknown) => {
-            failure = new DocleusError(
-              "plugin/install-lease-lost",
-              "cannot confirm the plugin install lease; restart from the current deployment config before retrying",
-              { cause },
-            );
-            throw failure;
-          })
-          .finally(() => {
-            renewal = undefined;
-          });
-        await renewal;
-      };
+      let replacingStorage = false;
+      const check: CheckInstallLease = Object.assign(
+        async () => {
+          if (failure) throw failure;
+          renewal ??= renew(holder)
+            .then((current) => {
+              db = current;
+            })
+            .catch((cause: unknown) => {
+              failure = new DocleusError(
+                "plugin/install-lease-lost",
+                "cannot confirm the plugin install lease; restart from the current deployment config before retrying",
+                { cause },
+              );
+              throw failure;
+            })
+            .finally(() => {
+              renewal = undefined;
+            });
+          await renewal;
+        },
+        {
+          async replaceStorage(task: () => Promise<void>) {
+            await check();
+            replacingStorage = true;
+            try {
+              await task();
+            } finally {
+              replacingStorage = false;
+            }
+            await check();
+          },
+        },
+      );
       const stopRenewing = ctx.effect(() => {
         const timer = setInterval(() => {
-          if (failure) return;
+          if (failure || replacingStorage) return;
           check().catch((error: unknown) => {
             logger.warn("cannot renew the plugin install lease: %s", error);
           });

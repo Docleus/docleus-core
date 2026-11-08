@@ -1,6 +1,6 @@
 {
   "name": "@docleus/core-jobs",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "private": true,
   "type": "module",
   "description": "Default jobs: database-backed queue.",

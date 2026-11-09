@@ -1,6 +1,6 @@
 {
   "name": "@docleus/config",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "private": true,
   "type": "module",
   "description": "Shared tsconfig, oxlint, Prettier, Vitest and dependency-cruiser configuration for Docleus repositories.",

@@ -1,6 +1,6 @@
 {
   "name": "@docleus/core-blocks",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "private": true,
   "type": "module",
   "description": "Default blocks: type registry, versioned migration, passthrough.",

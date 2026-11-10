@@ -1,6 +1,6 @@
 {
   "name": "@test/bad-migration",
   "version": "0.0.1",
-  "engines": { "docleus": ">=0.0.1 <0.0.9" },
+  "engines": { "docleus": ">=0.0.1 <0.0.10" },
   "entries": { "server": "./index.js" }
 }

@@ -103,6 +103,7 @@ export interface Instance {
 /**
  * Boots an instance: the core services on a root context, the instance API,
  * the configured plugins (installed on first boot), and the frontend.
+ * Resolves after the dependent sites service and instance API initialize.
  */
 export async function createInstance(
   options: InstanceOptions = {},
@@ -291,6 +292,8 @@ async function bootInstance(
   });
   await host.apply(rows);
   for (const name of plugins.keys()) await root.installations.install(name);
+  await sites.await();
+  await api.await();
   await boot.finish();
   const manager = createPluginManager({
     ctx: root,

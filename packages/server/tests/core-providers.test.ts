@@ -30,6 +30,7 @@ async function publishSite(instance: Instance): Promise<void> {
       body: JSON.stringify({ email: "ada@example.com" }),
     }),
   );
+  expect(login.status, await login.clone().text()).toBe(200);
   const { token } = (await login.json()) as { token: string };
   const admin = client(instance, { token });
   const { org } = await admin.json<{ org: { id: string } }>(

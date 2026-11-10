@@ -76,7 +76,7 @@ Each core ctx key has an interface in `@docleus/sdk`, a default implementation i
 | `installations` | `@docleus/core-installations` | Install, per-org and per-space enablement, settings, scoped dispatch   |
 | `sites`         | `@docleus/core-sites`         | Published sites, immutable artifacts, rollback, static serving         |
 
-`ctx.search` and `ctx.editor` have interfaces in the SDK but no core implementation; `docleus-plugin-search-db` and `docleus-plugin-editor` provide them. A configured plugin whose manifest `provides` a core key (currently `blobs`, as `docleus-plugin-blobs-s3` does) replaces the core provider, and services that use the key wait for the plugin.
+`ctx.search` and `ctx.editor` have interfaces in the SDK but no core implementation; `docleus-plugin-search-db` and `docleus-plugin-editor` provide them. A configured plugin whose manifest `provides` a core key (currently `blobs`, as `docleus-plugin-blobs-s3` does) replaces the core provider, and services that use the key wait for the plugin. Instance creation waits for the dependent sites service and instance API to finish initializing before returning.
 
 To run a suite against your own implementation:
 

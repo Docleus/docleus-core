@@ -1,6 +1,6 @@
 {
   "name": "@docleus/core-sites",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "private": true,
   "type": "module",
   "description": "Default sites: sites, publications, immutable artifacts, rollback and serving.",

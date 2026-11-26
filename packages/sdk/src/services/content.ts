@@ -142,10 +142,16 @@ export interface PreCommitInput {
   readonly isDryRun?: boolean;
 }
 
-/** Input of the `content/flush` event. */
+/**
+ * Input of the `content/flush` event.
+ * @mode parallel
+ * @stability experimental
+ */
 export interface ContentFlushInput {
   readonly spaceId: string;
   readonly branch: string;
+  /** Reject if pending edits cannot be committed. Required before merge/rebase. */
+  readonly requireCommit?: boolean;
 }
 
 /** Where a {@link MergeCheck} stands. `pending` and `failure` both block a required check. */

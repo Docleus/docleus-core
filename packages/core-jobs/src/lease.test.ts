@@ -2,6 +2,7 @@ import { Context, type Fiber } from "@docleus/kernel";
 import { createStorageService } from "@docleus/core-storage";
 import { testStorageLocation } from "@docleus/testing";
 import type { Job, JobsService } from "@docleus/sdk";
+import { sql } from "kysely";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createJobsService, type JobsOptions } from "./index.ts";
 
@@ -147,23 +148,47 @@ describe("job leases", () => {
   });
 
   it("keeps the lease of a job that is still running", async () => {
-    const { first, second } = await twoWorkers({ leaseMs: 300 });
+    vi.useFakeTimers({ toFake: ["Date", "setInterval", "clearInterval"] });
+    const { first, second, ctx } = await twoWorkers({ leaseMs: 300 });
+    let release = () => {};
+    let started = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+      gates.push(resolve);
+    });
+    const ready = new Promise<void>((resolve) => {
+      started = resolve;
+    });
     let runs = 0;
     const work = async () => {
       runs += 1;
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      started();
+      await gate;
     };
     first.handle("test/job", work);
     second.handle("test/job", work);
     await first.enqueue("test/job", {});
-
     const running = first.runOnce();
-    const deadline = Date.now() + 900;
-    while (Date.now() < deadline) {
+    await ready;
+    const claimedAt = Date.now();
+    try {
+      await vi.advanceTimersByTimeAsync(200);
+      await expect
+        .poll(async () => {
+          const { rows } = await sql<{
+            lease_until: number;
+          }>`select lease_until from jobs where status = 'running'`.execute(
+            ctx.storage.db,
+          );
+          return rows[0]?.lease_until;
+        })
+        .toBeGreaterThan(claimedAt + 300);
+      vi.setSystemTime(claimedAt + 400);
       expect(await second.runOnce()).toBe(0);
-      await new Promise((resolve) => setTimeout(resolve, 20));
+    } finally {
+      release();
+      await running;
     }
-    await running;
     expect(runs).toBe(1);
     expect(await first.stats()).toMatchObject({ running: 0, done: 1 });
   });

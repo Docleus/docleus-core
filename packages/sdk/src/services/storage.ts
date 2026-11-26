@@ -25,6 +25,10 @@ export interface StorageService {
    * await it themselves purely to avoid a disposal race.
    */
   migrate(owner: string, migrations: readonly Migration[]): Promise<void>;
-  /** Runs `fn` in a transaction; any throw rolls back every change made inside. */
+  /**
+   * Runs `fn` in a transaction; any throw rolls back every database change made inside.
+   * `db` queries join the active transaction, even through a previously captured handle.
+   * Nested calls use serialized savepoints and roll back independently on failure.
+   */
   transaction<T>(fn: (db: Kysely<unknown>) => Promise<T>): Promise<T>;
 }

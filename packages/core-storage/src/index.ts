@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { DatabaseSync } from "node:sqlite";
 import { DocleusError, type Context } from "@docleus/kernel";
 import { Kysely, PostgresDialect, SqliteDialect, sql } from "kysely";
@@ -94,6 +95,22 @@ export function createStorageService(
 ): StorageService {
   const { dialect, db } = connect(ctx, location ?? ":memory:");
 
+  interface TransactionScope {
+    readonly db: Kysely<unknown>;
+    isActive: boolean;
+    tail: Promise<unknown>;
+  }
+  const transactions = new AsyncLocalStorage<TransactionScope>();
+  let savepoint = 0;
+  const scopedDb = new Proxy(db, {
+    get(_target, key) {
+      const scope = transactions.getStore();
+      const current = scope?.isActive ? scope.db : db;
+      const value: unknown = Reflect.get(current, key, current);
+      return typeof value === "function" ? value.bind(current) : value;
+    },
+  });
+
   // Queued in-process before a connection is taken, so at most one pooled
   // connection per process waits on the advisory lock and the rest stay
   // free for queries the lock holder runs outside its transaction.
@@ -106,7 +123,20 @@ export function createStorageService(
             trx,
           );
         }
-        return fn(trx);
+        const scope: TransactionScope = {
+          db: trx,
+          isActive: true,
+          tail: Promise.resolve(),
+        };
+        try {
+          return await transactions.run(scope, async () => {
+            const result = await fn(trx);
+            await scope.tail;
+            return result;
+          });
+        } finally {
+          scope.isActive = false;
+        }
       }),
     );
     queue = run.catch(() => undefined);
@@ -136,7 +166,7 @@ export function createStorageService(
 
   return {
     dialect,
-    db,
+    db: scopedDb,
     migrate(owner, migrations) {
       // Added synchronously, before any `await`, so a `dispose()` that runs
       // right after this call still waits for it.
@@ -168,7 +198,32 @@ export function createStorageService(
       return task;
     },
     transaction(fn) {
-      return serialized(fn);
+      const parent = transactions.getStore();
+      if (!parent?.isActive) return serialized(fn);
+      const run = parent.tail.then(async () => {
+        const name = `docleus_nested_${++savepoint}`;
+        await sql.raw(`savepoint ${name}`).execute(parent.db);
+        const scope: TransactionScope = {
+          db: parent.db,
+          isActive: true,
+          tail: Promise.resolve(),
+        };
+        try {
+          const result = await transactions.run(scope, () => fn(scope.db));
+          await scope.tail;
+          await sql.raw(`release savepoint ${name}`).execute(parent.db);
+          return result;
+        } catch (error) {
+          await scope.tail;
+          await sql.raw(`rollback to savepoint ${name}`).execute(parent.db);
+          await sql.raw(`release savepoint ${name}`).execute(parent.db);
+          throw error;
+        } finally {
+          scope.isActive = false;
+        }
+      });
+      parent.tail = run.catch(() => undefined);
+      return run;
     },
   };
 }

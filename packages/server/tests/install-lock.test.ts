@@ -226,15 +226,33 @@ describe("install lock", () => {
 
   it("keeps the lease while the holder renews it", async () => {
     const { ctx } = await storage();
+    const now = Date.now();
+    vi.useFakeTimers({ toFake: ["Date", "setInterval", "clearInterval"] });
     const holder = createInstallLock(ctx, { leaseMs: 200, renewMs: 20 });
-    const waiter = createInstallLock(ctx, { pollMs: 5, waitMs: 600 });
+    const waiter = createInstallLock(ctx, { waitMs: 0 });
     const gate = deferred();
-    const held = holding(holder, gate);
-    await held.started;
-    await expect(waiter.run(async () => undefined)).rejects.toMatchObject({
-      code: "plugin/install-busy",
+    const started = deferred();
+    let renew: (() => Promise<void>) | undefined;
+    const held = holder.run(async (check) => {
+      renew = check;
+      started.resolve();
+      await gate.promise;
     });
-    gate.resolve();
-    await held.done;
+    try {
+      await started.promise;
+      vi.setSystemTime(now + 150);
+      await vi.advanceTimersByTimeAsync(20);
+      // Await the actual database renewal before moving beyond the original expiry.
+      if (!renew) throw new Error("holder did not start");
+      await renew();
+      vi.setSystemTime(now + 250);
+      await expect(waiter.run(async () => undefined)).rejects.toMatchObject({
+        code: "plugin/install-busy",
+      });
+    } finally {
+      gate.resolve();
+      await held;
+      vi.useRealTimers();
+    }
   });
 });

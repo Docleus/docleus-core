@@ -219,8 +219,10 @@ The instance serves the active publication of each site at `/sites/<org slug>/<s
 To host a site elsewhere, write a publication to a directory:
 
 ```bash
-pnpm docleus export --site <org slug>/<site slug> --out <dir> --data <dir> [--publication <id>]
+pnpm docleus export --site <org slug>/<site slug> --out <dir> --data <dir> [--publication <id>] [--config <file>] [--database <location>]
 ```
+
+Export resolves the deployment config, database, bundle and blob secret using the same flags, configuration and environment precedence as `serve` and `migrate`.
 
 It exports the active publication unless `--publication` names another, and refuses an output directory that is not empty.
 

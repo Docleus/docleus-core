@@ -960,7 +960,7 @@ export function createContentService(ctx: Context): ContentService {
             Number(b.name === MAIN_BRANCH) - Number(a.name === MAIN_BRANCH),
         );
     },
-    async deleteBranch(spaceId, name) {
+    async deleteBranch(spaceId, name, options) {
       if (name === MAIN_BRANCH) {
         throw new DocleusError(
           "content/invalid-branch",
@@ -968,13 +968,33 @@ export function createContentService(ctx: Context): ContentService {
         );
       }
       await ready;
-      const deleted = await db
-        .deleteFrom("branches")
-        .where("space_id", "=", spaceId)
-        .where("name", "=", name)
-        .returning("name")
-        .executeTakeFirst();
-      if (!deleted) throw branchNotFound(spaceId, name);
+      await ctx.storage.transaction(async (trx) => {
+        const t = trx as unknown as Kysely<ContentSchema>;
+        let removal = t
+          .deleteFrom("branches")
+          .where("space_id", "=", spaceId)
+          .where("name", "=", name);
+        if (options) {
+          removal = removal.where(
+            "head",
+            options.expectedHead === undefined ? "is" : "=",
+            options.expectedHead ?? null,
+          );
+        }
+        const deleted = await removal.returning("name").executeTakeFirst();
+        if (deleted) return;
+        const branch = await t
+          .selectFrom("branches")
+          .select("head")
+          .where("space_id", "=", spaceId)
+          .where("name", "=", name)
+          .executeTakeFirst();
+        if (!branch) throw branchNotFound(spaceId, name);
+        throw new DocleusError(
+          "content/stale-head",
+          `branch "${name}" changed before it could be deleted`,
+        );
+      });
     },
     merge: (input) => mergeEntrySets(input),
     getRevision,

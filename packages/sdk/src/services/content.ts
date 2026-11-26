@@ -435,8 +435,18 @@ export interface ContentService {
   getBranch(spaceId: string, name: string): Promise<Branch | undefined>;
   /** `main` first, then the others by name. */
   listBranches(spaceId: string): Promise<Branch[]>;
-  /** Its revisions stay readable. Throws for `main`. */
-  deleteBranch(spaceId: string, name: string): Promise<void>;
+  /**
+   * Its revisions stay readable. Throws for `main`. When options are supplied,
+   * deletes only the observed head atomically; undefined means an empty branch.
+   * A mismatch throws `content/stale-head` and preserves the branch.
+   */
+  deleteBranch(
+    spaceId: string,
+    name: string,
+    options?: {
+      readonly expectedHead: string | undefined;
+    },
+  ): Promise<void>;
   /**
    * Three-way merge of entry sets, keyed by entry id and, within bodies,
    * by block id. Where only one side changed something, that side wins;

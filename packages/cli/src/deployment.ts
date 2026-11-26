@@ -8,7 +8,7 @@ import {
   type DeploymentConfig,
 } from "@docleus/server";
 
-/** The flags `serve` and `migrate` share. */
+/** The deployment flags shared by `serve`, `migrate` and `export`. */
 export interface DeploymentFlags {
   readonly config?: string | undefined;
   readonly data?: string | undefined;

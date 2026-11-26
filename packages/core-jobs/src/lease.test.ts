@@ -182,7 +182,7 @@ describe("job leases", () => {
           );
           return rows[0]?.lease_until;
         })
-        .toBeGreaterThan(claimedAt + 300);
+        .toBeGreaterThanOrEqual(claimedAt + 500);
       vi.setSystemTime(claimedAt + 400);
       expect(await second.runOnce()).toBe(0);
     } finally {

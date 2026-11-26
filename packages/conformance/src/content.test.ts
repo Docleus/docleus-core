@@ -121,7 +121,13 @@ function createBrokenContentService(): ContentSubject {
       );
     },
     listBranches: notImplemented,
-    deleteBranch: notImplemented,
+    async deleteBranch(spaceId, name) {
+      const index = branches.findIndex(
+        (branch) => branch.spaceId === spaceId && branch.name === name,
+      );
+      if (index < 0) throw new Error("branch missing");
+      branches.splice(index, 1);
+    },
     merge: notImplemented,
     registerProjection: notImplemented,
     catchUp: notImplemented,
@@ -176,6 +182,18 @@ describe("a deliberately broken heads", () => {
     if (!invariant) throw new Error("expected the invariant to exist");
     await expect(
       Promise.resolve(invariant.check(createBrokenContentService())),
+    ).rejects.toThrow();
+  });
+});
+
+describe("a provider that ignores the expected branch head", () => {
+  it("fails the conditional deletion invariant", async () => {
+    const invariant = contentConformanceSuite.invariants.find((candidate) =>
+      candidate.name.startsWith("conditional branch deletion"),
+    );
+    if (!invariant) throw new Error("invariant missing");
+    await expect(
+      invariant.check(createBrokenContentService()),
     ).rejects.toThrow();
   });
 });

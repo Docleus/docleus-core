@@ -741,6 +741,42 @@ export const contentConformanceSuite = defineConformanceSuite<ContentSubject>(
       },
     },
     {
+      name: "conditional branch deletion rejects a changed head and accepts an observed empty head",
+      async check({ content }) {
+        const space = await createSpace(content);
+        await content.createBranch({ spaceId: space.id, name: "feature" });
+        await expect(
+          content.deleteBranch(space.id, "feature", {
+            expectedHead: "changed",
+          }),
+        ).rejects.toMatchObject({ code: "content/stale-head" });
+        expect(await content.getBranch(space.id, "feature")).toBeDefined();
+        await content.deleteBranch(space.id, "feature", {
+          expectedHead: undefined,
+        });
+        await content.createBranch({ spaceId: space.id, name: "feature" });
+        const revision = await content.commit({
+          spaceId: space.id,
+          branch: "feature",
+          parent: undefined,
+          put: { home: page("Home") },
+          message: "New head",
+        });
+        await expect(
+          content.deleteBranch(space.id, "feature", {
+            expectedHead: undefined,
+          }),
+        ).rejects.toMatchObject({ code: "content/stale-head" });
+        expect((await content.getBranch(space.id, "feature"))?.head).toBe(
+          revision.id,
+        );
+        await content.deleteBranch(space.id, "feature", {
+          expectedHead: revision.id,
+        });
+        expect(await content.getBranch(space.id, "feature")).toBeUndefined();
+      },
+    },
+    {
       name: "a commit with rebase sets the branch's base to that main revision; rebase on main or to another revision is rejected",
       async check({ content }) {
         const space = await createSpace(content);

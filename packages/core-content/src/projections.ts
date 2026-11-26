@@ -57,9 +57,13 @@ export function createProjectionRunner(
       if (batch.length === 0) return;
       for (const entry of batch) {
         if (projections.get(name) !== registered) return;
-        await registered.projection.apply(entry);
-        cursor = entry.seq;
-        await store.writeCursor(name, cursor);
+        await ctx.storage.transaction(async () => {
+          cursor = await store.readCursor(name);
+          if (entry.seq <= cursor) return;
+          await registered.projection.apply(entry);
+          await store.writeCursor(name, entry.seq);
+          cursor = entry.seq;
+        });
       }
     }
   }
@@ -120,9 +124,11 @@ export function createProjectionRunner(
     async rebuild(name) {
       const registered = get(name);
       return enqueue(registered, async () => {
-        await registered.projection.reset();
-        await store.writeCursor(name, 0);
-        await replay(registered);
+        await ctx.storage.transaction(async () => {
+          await registered.projection.reset();
+          await store.writeCursor(name, 0);
+          await replay(registered);
+        });
       });
     },
     notify() {

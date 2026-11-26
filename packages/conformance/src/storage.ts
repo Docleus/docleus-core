@@ -95,6 +95,25 @@ export const storageConformanceSuite = defineConformanceSuite<StorageService>(
       },
     },
     {
+      name: "queries through a captured db handle roll back with the active transaction",
+      async check(storage) {
+        await storage.migrate("test.owner", [createTable("t_scoped")]);
+        const captured = storage.db;
+        await expectToReject(() =>
+          storage.transaction(async () => {
+            await sql`insert into t_scoped (value) values ('a')`.execute(
+              captured,
+            );
+            await storage.transaction(async (db) => {
+              await sql`insert into t_scoped (value) values ('b')`.execute(db);
+            });
+            throw new Error("rollback");
+          }),
+        );
+        expect(await count(captured, "t_scoped")).toBe(0);
+      },
+    },
+    {
       name: "a transaction that resolves commits and returns its value",
       async check(storage) {
         await storage.migrate("test.owner", [createTable("t_tx")]);

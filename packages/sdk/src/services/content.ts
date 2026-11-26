@@ -340,7 +340,11 @@ export interface Projection {
   readonly name: string;
   /** Clears the derived state before a rebuild. */
   reset(): Promise<void>;
-  /** Applies one entry. Entries arrive once each, in sequence order. */
+  /**
+   * Applies one entry in sequence order, inside the cursor's storage transaction.
+   * Database writes commit atomically with the cursor. External effects must be
+   * idempotent by entry seq because failures can replay them.
+   */
   apply(entry: LogEntry): Promise<void>;
 }
 

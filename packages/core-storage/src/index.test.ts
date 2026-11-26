@@ -98,7 +98,10 @@ for (const { dialect, isAvailable, location } of dialects) {
     runConformanceSuite(storageConformanceSuite, fresh);
 
     describe("a deliberately broken storage implementation", () => {
-      it("fails the rollback invariant the suite is meant to catch", async () => {
+      it.each([
+        "a transaction that throws rolls back every change made inside it",
+        "queries through a captured db handle roll back with the active transaction",
+      ])("rejects broken transaction behavior: %s", async (name) => {
         const real = await fresh();
         // Runs `fn` directly against the connection, so nothing rolls back.
         const broken: StorageService = {
@@ -108,9 +111,7 @@ for (const { dialect, isAvailable, location } of dialects) {
           transaction: (fn) => fn(real.db),
         };
         const invariant = storageConformanceSuite.invariants.find(
-          (candidate) =>
-            candidate.name ===
-            "a transaction that throws rolls back every change made inside it",
+          (candidate) => candidate.name === name,
         );
         if (!invariant) throw new Error("expected the invariant to exist");
         await expect(
@@ -120,6 +121,44 @@ for (const { dialect, isAvailable, location } of dialects) {
     });
 
     describe("createStorageService", () => {
+      it("joins captured database handles and nested transactions to the outer transaction", async () => {
+        const storage = await fresh();
+        const captured = storage.db;
+        await sql`create table scoped (value integer)`.execute(captured);
+        await expect(
+          storage.transaction(async () => {
+            await sql`insert into scoped values (1)`.execute(captured);
+            await storage.transaction(async (db) => {
+              await sql`insert into scoped values (2)`.execute(db);
+            });
+            throw new Error("abort outer");
+          }),
+        ).rejects.toThrow("abort outer");
+        expect(
+          (await sql`select * from scoped`.execute(captured)).rows,
+        ).toEqual([]);
+        await storage.transaction(async () => {
+          await sql`insert into scoped values (3)`.execute(captured);
+          await expect(
+            storage.transaction(async (db) => {
+              await sql`insert into scoped values (4)`.execute(db);
+              throw new Error("abort nested");
+            }),
+          ).rejects.toThrow("abort nested");
+          await Promise.all(
+            [5, 6].map((value) =>
+              storage.transaction(async (db) => {
+                await sql`insert into scoped values (${value})`.execute(db);
+              }),
+            ),
+          );
+        });
+        expect(
+          (await sql`select * from scoped order by value`.execute(captured))
+            .rows,
+        ).toEqual([{ value: 3 }, { value: 5 }, { value: 6 }]);
+      });
+
       it(`reports the ${dialect} dialect`, async () => {
         expect((await fresh()).dialect).toBe(dialect);
       });

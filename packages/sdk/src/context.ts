@@ -85,6 +85,7 @@ declare module "@docleus/kernel" {
      * Asks plugins that hold unsaved changes of a branch (such as a shared
      * editing session) to commit them now. Dispatched, filtered by the
      * space, before something reads a branch head to merge or rebase it.
+     * With `requireCommit`, listeners must reject incomplete commits.
      *
      * @mode parallel
      * @stability experimental

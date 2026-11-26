@@ -195,7 +195,7 @@ Every space has a `main` branch; `ctx.content.createBranch` starts another one a
 
 Every commit runs through the `content/pre-commit` waterfall, scoped to the space: a listener rejects a commit by throwing an error whose code ends in `/commit-rejected`, or returns a changed copy of what `next()` resolved to. `ctx.content.checkCommit(input)` runs the same chain with `isDryRun: true` and commits nothing; listeners with side effects skip dry runs.
 
-Plugins that hold edits outside the content log, such as live collaboration, listen to `content/flush` (`parallel`, scoped to the space) and commit them. Anything that reads a branch head to merge or rebase dispatches it first.
+Plugins that hold edits outside the content log, such as live collaboration, listen to `content/flush` (`parallel`, scoped to the space) and commit them. Anything that reads a branch head to merge or rebase dispatches it first with `requireCommit: true` and awaits it. Listeners must reject if pending edits cannot be committed; background callers may omit the flag to retain drafts for later recovery.
 
 `docleus-plugin-change-requests` dispatches `change-request/checks` (`parallel`, scoped to the space) with the change request and its branch head; listeners call `report(check)` with a `MergeCheck`, and a change request merges only when every required check succeeded.
 

@@ -253,3 +253,5 @@ Saving a page sends `PUT /api/orgs/<org>/spaces/<space>/pages/<page>/body` with 
 [MIT](LICENSE)
 
 Projection callbacks and their cursor updates share a storage transaction, serialized across database runners. Queries through `ctx.storage.db` join that transaction; nested `transaction` calls use savepoints, so existing database projections stay atomic. External effects must deduplicate by log entry sequence because a failed callback can replay them.
+
+Blob collection requires both `list` and `deleteIfUnchanged`: it never falls back to unconditional deletion. Local storage compares opaque file generations while holding the shared storage transaction, which also serializes file replacements. Standalone local services without the shared storage coordinator and remote providers without safe generation deletion retain orphan candidates; operators must monitor storage growth.

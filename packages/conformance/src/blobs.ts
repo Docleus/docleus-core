@@ -107,6 +107,26 @@ export const blobsConformanceSuite = defineConformanceSuite<BlobsService>(
       },
     },
     {
+      name: "conditional deletion never removes an unobserved or replaced generation",
+      async check(blobs) {
+        if (!blobs.list || !blobs.deleteIfUnchanged) return;
+        const data = text("conditional generation");
+        const blob = await blobs.put(data);
+        expect(await blobs.deleteIfUnchanged({ ...blob, storedAt: 0 })).toBe(
+          false,
+        );
+        const entry = (await listed(blobs))?.find(
+          (candidate) => candidate.hash === blob.hash,
+        );
+        if (!entry) throw new Error("listed blob missing");
+        // A non-refreshing put may retain its generation within the refresh window.
+        await blobs.delete(blob.hash);
+        await blobs.put(data);
+        expect(await blobs.deleteIfUnchanged(entry)).toBe(false);
+        expect(await blobs.get(blob.hash)).toEqual(data);
+      },
+    },
+    {
       name: "verify accepts a token sign issued for the same hash before it expires",
       async check(blobs) {
         const { hash } = await blobs.put(text("signed"));

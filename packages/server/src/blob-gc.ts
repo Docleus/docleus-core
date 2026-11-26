@@ -51,7 +51,7 @@ export interface BlobCollectionOptions {
 }
 
 export interface BlobCollection {
-  /** False when the `blobs` provider cannot list its blobs. */
+  /** False when the provider cannot list and conditionally delete its blobs. */
   readonly isSupported: boolean;
   readonly marked: number;
   readonly kept: number;
@@ -73,8 +73,8 @@ function assertGrace(graceMs: number): void {
 /**
  * Mark and sweep over `ctx.blobs`: `blobs/mark` collects the hashes plugins
  * still reference, then every unmarked blob stored before the grace period
- * is deleted. Marking runs before listing, so a blob put again after the
- * marks were taken shows a fresh `storedAt` and is kept.
+ * is deleted only if its observed generation is unchanged. Providers that
+ * cannot guarantee conditional deletion retain their blobs.
  */
 export async function collectBlobs(
   ctx: Context,
@@ -85,7 +85,7 @@ export async function collectBlobs(
   const now = options.now ?? Date.now;
   const isStopped = options.isStopped ?? (() => false);
   const blobs = ctx.blobs;
-  if (!blobs.list) {
+  if (!blobs.list || !blobs.deleteIfUnchanged) {
     return {
       isSupported: false,
       marked: 0,
@@ -110,9 +110,11 @@ export async function collectBlobs(
       continue;
     }
     if (isStopped()) break;
-    if (await blobs.delete(entry.hash)) {
+    if (await blobs.deleteIfUnchanged(entry)) {
       deleted += 1;
       deletedBytes += entry.size;
+    } else {
+      kept += 1;
     }
   }
   return {
@@ -219,7 +221,9 @@ export function registerBlobCollector(
       isStopped: () => isStopped,
     });
     if (!result.isSupported) {
-      logger.info("the blobs provider cannot list blobs; skipping collection");
+      logger.info(
+        "the blobs provider cannot safely collect observed generations; skipping collection",
+      );
       return;
     }
     logger.info(

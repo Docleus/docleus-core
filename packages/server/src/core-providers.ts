@@ -88,10 +88,10 @@ function providers(options: CoreProviderOptions): CoreProvider[] {
     },
     {
       key: "blobs",
-      inject: [],
-      create: () => {
+      inject: ["storage"],
+      create: (ctx) => {
         blobsDir ??= mkdtempSync(join(tmpdir(), "docleus-blobs-"));
-        return createBlobsService(blobsDir, options.blobSecret);
+        return createBlobsService(blobsDir, options.blobSecret, ctx.storage);
       },
     },
     {

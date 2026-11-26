@@ -5,7 +5,11 @@ import { createBlobsService } from "@docleus/core-blobs";
 import { createJobsService } from "@docleus/core-jobs";
 import { createStorageService } from "@docleus/core-storage";
 import { Context, type Fiber } from "@docleus/kernel";
-import { BLOB_PUT_REFRESH_MS, type BlobsService } from "@docleus/sdk";
+import {
+  BLOB_PUT_REFRESH_MS,
+  type BlobsService,
+  type StorageService,
+} from "@docleus/sdk";
 import { testStorageLocation } from "@docleus/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -44,7 +48,7 @@ async function boot(
   options: {
     readonly database?: string;
     readonly blobsDir?: string;
-    readonly blobs?: (dir: string) => BlobsService;
+    readonly blobs?: (dir: string, storage: StorageService) => BlobsService;
   } = {},
 ): Promise<Harness> {
   const blobsDir = options.blobsDir ?? (await tempDir());
@@ -54,7 +58,10 @@ async function boot(
       ctx.provide("storage", createStorageService(ctx, options.database));
       ctx.provide(
         "blobs",
-        (options.blobs ?? ((dir) => createBlobsService(dir)))(blobsDir),
+        (
+          options.blobs ??
+          ((dir, storage) => createBlobsService(dir, undefined, storage))
+        )(blobsDir, ctx.storage),
       );
     }),
   );
@@ -119,6 +126,37 @@ describe("collectBlobs", () => {
 
     await collectBlobs(harness.root);
     expect(await harness.hashes()).toEqual([hash]);
+  });
+
+  it("keeps identical bytes put again after the sweep observed the old file", async () => {
+    const data = new TextEncoder().encode("reused during sweep");
+    const harness = await boot({
+      blobs: (dir, storage) => {
+        const blobs = createBlobsService(dir, undefined, storage);
+        const writer = createBlobsService(dir, undefined, storage);
+        return {
+          ...blobs,
+          async *list() {
+            for await (const entry of blobs.list?.() ?? []) {
+              await writer.put(data);
+              yield entry;
+            }
+          },
+        };
+      },
+    });
+    const hash = await harness.put("reused during sweep", 3 * DAY);
+    const result = await collectBlobs(harness.root);
+    expect(result.deleted).toBe(0);
+    expect(result.kept).toBe(1);
+    expect(await harness.root.blobs.get(hash)).toEqual(Buffer.from(data));
+  });
+
+  it("retains candidates when the provider cannot delete an observed generation", async () => {
+    const harness = await boot({ blobs: (dir) => createBlobsService(dir) });
+    const hash = await harness.put("unsupported", 3 * DAY);
+    expect((await collectBlobs(harness.root)).isSupported).toBe(false);
+    expect(await harness.root.blobs.get(hash)).toBeDefined();
   });
 
   it("deletes nothing when a marking listener fails", async () => {

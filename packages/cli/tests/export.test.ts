@@ -33,10 +33,11 @@ function page(title: string, order: number) {
 }
 
 /** A data directory holding site acme/docs with two publications. */
-async function publishedData() {
+async function publishedData(database?: string) {
   const data = await tempDir("docleus-export-data-");
   const instance = await createInstance({
     dataDir: data,
+    ...(database && { database }),
     siteRuntimeDir: `${fixtures}site-runtime`,
   });
   try {
@@ -95,6 +96,48 @@ async function listFiles(dir: string) {
 }
 
 describe("docleus export", () => {
+  it.each(["config", "environment", "flag", "default config"])(
+    "reads the database selected by %s instead of the default database",
+    async (source) => {
+      const directory = await tempDir("docleus-export-db-");
+      const database = join(directory, "selected.sqlite");
+      const { data } = await publishedData(database);
+      const config =
+        source === "default config"
+          ? join(data, "docleus.yaml")
+          : join(directory, "deployment.yaml");
+      await writeFile(
+        config,
+        `data: ${JSON.stringify(data)}\n${source === "config" || source === "default config" ? `database: ${JSON.stringify(database)}\n` : ""}`,
+      );
+      const out = join(directory, "site");
+      const output = io();
+      const flags = [
+        "--site",
+        "acme/docs",
+        "--out",
+        out,
+        ...(source === "default config"
+          ? ["--data", data]
+          : ["--config", config]),
+      ];
+      if (source === "flag") flags.push("--database", database);
+      expect(
+        await exportSite(flags, output.io, {
+          DOCLEUS_DATABASE_URL:
+            source === "environment"
+              ? database
+              : join(directory, "wrong.sqlite"),
+        }),
+        output.out.stderr,
+      ).toBe(0);
+      expect(await listFiles(out)).toContain("/guide/index.html");
+      await expect(readFile(join(data, "docleus.db"))).rejects.toMatchObject({
+        code: "ENOENT",
+      });
+    },
+  );
+
   it("writes the active publication into the output directory", async () => {
     const { data } = await publishedData();
     const out = join(await tempDir("docleus-export-out-"), "site");

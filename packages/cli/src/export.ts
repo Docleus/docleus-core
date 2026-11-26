@@ -1,15 +1,11 @@
 import { mkdir, readdir, writeFile } from "node:fs/promises";
-import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { dirname, isAbsolute, relative, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import {
-  DEPLOYMENT_CONFIG_FILE,
-  createInstance,
-  readBundlePlugins,
-  type Instance,
-} from "@docleus/server";
+import { createInstance, type Instance } from "@docleus/server";
 import type { CliIo } from "./cli.ts";
+import { resolveDeployment } from "./deployment.ts";
 
-const USAGE = `usage: docleus export --site <org>/<site> --out <dir> [--publication <id>] [--bundle <file>] [--data <dir>]\n\n  --site         the site to export, as <org slug>/<site slug>\n  --out          an empty or missing directory to write the site into\n  --publication  the publication to export (default: the active one)\n`;
+const USAGE = `usage: docleus export --site <org>/<site> --out <dir> [--publication <id>] [--config <file>] [--bundle <file>] [--data <dir>] [--database <location>]\n\n  --site         the site to export, as <org slug>/<site slug>\n  --out          an empty or missing directory to write the site into\n  --publication  the publication to export (default: the active one)\n`;
 
 /**
  * `docleus export`: writes a publication's files into a directory, ready for
@@ -18,6 +14,7 @@ const USAGE = `usage: docleus export --site <org>/<site> --out <dir> [--publicat
 export async function exportSite(
   argv: readonly string[],
   io: CliIo,
+  env: Readonly<Record<string, string | undefined>> = process.env,
 ): Promise<number> {
   let values;
   try {
@@ -27,6 +24,8 @@ export async function exportSite(
         site: { type: "string" },
         out: { type: "string" },
         publication: { type: "string" },
+        config: { type: "string" },
+        database: { type: "string" },
         bundle: { type: "string" },
         data: { type: "string" },
         help: { type: "boolean", short: "h" },
@@ -51,18 +50,25 @@ export async function exportSite(
     return 2;
   }
 
+  let deployment;
+  try {
+    deployment = resolveDeployment(values, env);
+  } catch (error) {
+    io.stderr(`${(error as Error).message}\n`);
+    return 2;
+  }
   const out = resolve(values.out);
   let instance: Instance | undefined;
   try {
     await assertEmptyDir(out);
-    const bundle = values.bundle && resolve(values.bundle);
-    const dataDir = resolve(values.data ?? ".docleus");
     instance = await createInstance({
-      dataDir,
-      configFile: join(dataDir, DEPLOYMENT_CONFIG_FILE),
+      dataDir: deployment.dataDir,
+      configFile: deployment.configFile,
+      database: deployment.database,
+      blobSecret: deployment.blobSecret,
       role: "web",
-      plugins: bundle ? readBundlePlugins(bundle) : [],
-      baseDir: bundle ? dirname(bundle) : process.cwd(),
+      plugins: deployment.plugins,
+      baseDir: deployment.baseDir,
     });
     const count = await writeSite(instance, {
       orgSlug,

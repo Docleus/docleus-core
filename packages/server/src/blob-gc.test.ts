@@ -152,6 +152,27 @@ describe("collectBlobs", () => {
     expect(await harness.root.blobs.get(hash)).toEqual(Buffer.from(data));
   });
 
+  it("coordinates conditional deletion and a put through separate shared database connections", async () => {
+    const database = await sharedDatabase();
+    const blobsDir = await tempDir();
+    const first = await boot({ database, blobsDir });
+    const second = await boot({ database, blobsDir });
+    const hash = await first.put("shared generation", 3 * DAY);
+    const entries = [];
+    for await (const entry of first.root.blobs.list?.() ?? [])
+      entries.push(entry);
+    const entry = entries.find((candidate) => candidate.hash === hash);
+    if (!entry || !first.root.blobs.deleteIfUnchanged)
+      throw new Error("conditional deletion unavailable");
+    await Promise.all([
+      first.root.blobs.deleteIfUnchanged(entry),
+      second.root.blobs.put(new TextEncoder().encode("shared generation")),
+    ]);
+    expect(await second.root.blobs.get(hash)).toEqual(
+      Buffer.from("shared generation"),
+    );
+  });
+
   it("retains candidates when the provider cannot delete an observed generation", async () => {
     const harness = await boot({ blobs: (dir) => createBlobsService(dir) });
     const hash = await harness.put("unsupported", 3 * DAY);

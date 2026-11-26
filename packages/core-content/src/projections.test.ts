@@ -1,3 +1,6 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Context, type Fiber } from "@docleus/kernel";
 import { createStorageService } from "@docleus/core-storage";
 import { testStorageLocation } from "@docleus/testing";
@@ -6,12 +9,20 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createContentService } from "./index.ts";
 
 const fibers: Fiber[] = [];
+const directories: string[] = [];
 afterEach(async () => {
   for (const fiber of fibers.splice(0).toReversed()) await fiber.dispose();
+  for (const dir of directories.splice(0))
+    await rm(dir, { recursive: true, force: true });
 });
 
 async function setup() {
-  const location = await testStorageLocation();
+  let location = await testStorageLocation();
+  if (!location) {
+    const dir = await mkdtemp(join(tmpdir(), "docleus-shared-projections-"));
+    directories.push(dir);
+    location = join(dir, "state.sqlite");
+  }
   const ctx = new Context();
   fibers.push(
     await ctx.plugin((owner: Context) => {

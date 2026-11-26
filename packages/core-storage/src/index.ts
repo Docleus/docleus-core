@@ -1,7 +1,14 @@
+import { setTimeout as delay } from "node:timers/promises";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { DatabaseSync } from "node:sqlite";
 import { DocleusError, type Context } from "@docleus/kernel";
-import { Kysely, PostgresDialect, SqliteDialect, sql } from "kysely";
+import {
+  CompiledQuery,
+  Kysely,
+  PostgresDialect,
+  SqliteDialect,
+  sql,
+} from "kysely";
 import { Pool, TypeOverrides, types } from "pg";
 import type { Migration, StorageDialect, StorageService } from "@docleus/sdk";
 import { adaptNodeSqlite } from "./node-sqlite-adapter.ts";
@@ -26,12 +33,39 @@ interface Connection {
 
 function connectSqlite(path: string): Connection {
   const database = new DatabaseSync(path);
-  return {
-    dialect: "sqlite",
-    db: new Kysely<unknown>({
-      dialect: new SqliteDialect({ database: adaptNodeSqlite(database) }),
-    }),
+  const dialect = new SqliteDialect({ database: adaptNodeSqlite(database) });
+  const createDriver = dialect.createDriver.bind(dialect);
+  dialect.createDriver = () => {
+    const driver = createDriver();
+    driver.beginTransaction = async (connection) => {
+      const deadline = performance.now() + 5_000;
+      for (;;) {
+        try {
+          await connection.executeQuery(CompiledQuery.raw("begin immediate"));
+          return;
+        } catch (error) {
+          if (
+            typeof error !== "object" ||
+            error === null ||
+            !("errcode" in error) ||
+            error.errcode !== 5
+          )
+            throw error;
+          if (performance.now() >= deadline) {
+            throw new DocleusError(
+              "storage/transaction-busy",
+              "cannot acquire the SQLite transaction lock",
+              { cause: error },
+            );
+          }
+          // Wait before the callback starts; transaction work is never retried.
+          await delay(5);
+        }
+      }
+    };
+    return driver;
   };
+  return { dialect: "sqlite", db: new Kysely<unknown>({ dialect }) };
 }
 
 function connectPostgres(ctx: Context, url: string): Connection {

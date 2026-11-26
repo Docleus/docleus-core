@@ -1,3 +1,4 @@
+import type { BigIntStats } from "node:fs";
 import {
   createHash,
   createHmac,
@@ -15,7 +16,12 @@ import {
 } from "node:fs/promises";
 import { join } from "node:path";
 import { DocleusError, type Context } from "@docleus/kernel";
-import type { BlobEntry, BlobsService, BlobStat } from "@docleus/sdk";
+import type {
+  BlobEntry,
+  BlobsService,
+  BlobStat,
+  StorageService,
+} from "@docleus/sdk";
 
 function hashOf(data: Uint8Array): string {
   return createHash("sha256").update(data).digest("hex");
@@ -48,6 +54,10 @@ async function namesIn(dir: string): Promise<string[]> {
   }
 }
 
+function generationOf(info: BigIntStats): string {
+  return `${info.dev}:${info.ino}:${info.birthtimeNs}:${info.ctimeNs}`;
+}
+
 /** Walks `<dir>/ab/cd/<hash>`, skipping temporary and foreign files. */
 async function* entriesIn(dir: string): AsyncGenerator<BlobEntry> {
   for (const first of await namesIn(dir)) {
@@ -60,8 +70,13 @@ async function* entriesIn(dir: string): AsyncGenerator<BlobEntry> {
           continue;
         }
         try {
-          const info = await stat(join(shard, hash));
-          yield { hash, size: info.size, storedAt: info.mtimeMs };
+          const info = await stat(join(shard, hash), { bigint: true });
+          yield {
+            hash,
+            size: Number(info.size),
+            storedAt: Number(info.mtimeNs) / 1_000_000,
+            generation: generationOf(info),
+          };
         } catch (error) {
           // Deleted while listing.
           if (isMissing(error)) continue;
@@ -108,13 +123,16 @@ function verify(secret: Buffer, token: string): string | undefined {
 
 /**
  * Default `blobs` implementation: content-addressed storage in a local
- * directory, with HMAC-signed read tokens.
+ * directory, with HMAC-signed read tokens. Pass the shared storage service
+ * to coordinate puts and conditional garbage collection across processes.
+ * Without it, conditional deletion is unavailable.
  *
  * @stability experimental
  */
 export function createBlobsService(
   dir: string,
   secret: Buffer = randomBytes(32),
+  storage?: Pick<StorageService, "transaction">,
 ): BlobsService {
   return {
     async put(data) {
@@ -125,7 +143,12 @@ export function createBlobsService(
       // Writing even when the blob exists refreshes its `storedAt`.
       const temporary = `${path}.${randomBytes(8).toString("hex")}.tmp`;
       await writeFile(temporary, data);
-      await rename(temporary, path);
+      const replace = () => rename(temporary, path);
+      try {
+        await (storage ? storage.transaction(replace) : replace());
+      } finally {
+        await rm(temporary, { force: true });
+      }
       return { hash, size: data.byteLength };
     },
     async get(hash) {
@@ -173,6 +196,27 @@ export function createBlobsService(
         );
       }
     },
+    ...(storage && {
+      async deleteIfUnchanged(entry: BlobEntry) {
+        const path = pathFor(dir, entry.hash);
+        if (entry.generation === undefined) return false;
+        return storage.transaction(async () => {
+          try {
+            const info = await stat(path, { bigint: true });
+            if (generationOf(info) !== entry.generation) return false;
+            await rm(path);
+            return true;
+          } catch (error) {
+            if (isMissing(error)) return false;
+            throw new DocleusError(
+              "blobs/delete-failed",
+              `cannot conditionally delete blob "${entry.hash}"`,
+              { cause: error },
+            );
+          }
+        });
+      },
+    }),
     list: () => entriesIn(dir),
     sign(hash, expiresAt) {
       assertHash(hash);

@@ -82,3 +82,15 @@ describe("a blobs implementation whose list reports stale times", () => {
     ).rejects.toThrow();
   });
 });
+
+describe("a provider that deletes without checking the generation", () => {
+  it("fails the conditional deletion invariant", async () => {
+    const broken = createStaleListBlobsService();
+    broken.deleteIfUnchanged = (entry) => broken.delete(entry.hash);
+    const invariant = blobsConformanceSuite.invariants.find((candidate) =>
+      candidate.name.startsWith("conditional deletion"),
+    );
+    if (!invariant) throw new Error("invariant missing");
+    await expect(invariant.check(broken)).rejects.toThrow();
+  });
+});

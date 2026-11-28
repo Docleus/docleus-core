@@ -4,6 +4,7 @@ import { api } from "../lib/api.ts";
 import type { EditBranchGate } from "../lib/edit-branch.ts";
 import { asComponent, useSlot } from "../lib/host.tsx";
 import { withBranch } from "../lib/router.ts";
+import { fireWrite } from "../lib/write.ts";
 import { useLoad } from "../lib/use-load.ts";
 import { ErrorView } from "./error-view.tsx";
 
@@ -43,10 +44,28 @@ function Title(props: {
   isEditing: boolean;
   /** A page just created: its title is focused and selected, ready to type over. */
   isNew: boolean;
-  onRename(title: string): void;
+  onRename(title: string): Promise<unknown>;
+  onStopEditing(task: () => Promise<void>): () => void;
 }) {
   const element = useRef<HTMLHeadingElement>(null);
   const shown = useRef(props.title);
+  const rename = useRef(props.onRename);
+  rename.current = props.onRename;
+  const pending = useRef<Promise<void>>(Promise.resolve());
+  const commit = useCallback(() => {
+    const save = async () => {
+      const text = (element.current?.textContent ?? "")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (text === shown.current) return;
+      await rename.current(text);
+      shown.current = text;
+    };
+    const task = pending.current.then(save, save);
+    pending.current = task;
+    return task;
+  }, []);
+  useEffect(() => props.onStopEditing(commit), [props.onStopEditing, commit]);
   useEffect(() => {
     const heading = element.current;
     if (!heading) return;
@@ -62,15 +81,6 @@ function Title(props: {
     heading.focus();
     getSelection()?.selectAllChildren(heading);
   }, [isEditing, isNew]);
-  const commit = () => {
-    const text = (element.current?.textContent ?? "")
-      .replace(/\s+/g, " ")
-      .trim();
-    if (text !== shown.current) {
-      shown.current = text;
-      props.onRename(text);
-    }
-  };
   return (
     <h1
       ref={element}
@@ -78,11 +88,11 @@ function Title(props: {
       contentEditable={props.isEditing ? "plaintext-only" : false}
       suppressContentEditableWarning
       data-placeholder="Untitled"
-      onBlur={props.isEditing ? commit : undefined}
+      onBlur={props.isEditing ? () => fireWrite(commit()) : undefined}
       onKeyDown={(event) => {
         if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
         event.preventDefault();
-        commit();
+        fireWrite(commit());
         const body = element.current
           ?.closest("article")
           ?.querySelector<HTMLElement>('[contenteditable="true"]:not(.title)');
@@ -104,7 +114,8 @@ export function PageView(props: {
   gate: EditBranchGate;
   isNew: boolean;
   onSaveState(state: SaveState): void;
-  onRename(title: string): void;
+  onRename(title: string): Promise<unknown>;
+  onStopEditing(task: () => Promise<void>): () => void;
 }) {
   const { orgId, spaceId, pageId, branch, openBranch, gate } = props;
   const path = `/api/orgs/${orgId}/spaces/${spaceId}/pages/${pageId}`;
@@ -182,6 +193,8 @@ export function PageView(props: {
         </div>
       )}
       <Title
+        key={pageId}
+        onStopEditing={props.onStopEditing}
         title={props.title}
         isEditing={props.isEditing && props.canWrite}
         isNew={props.isNew}

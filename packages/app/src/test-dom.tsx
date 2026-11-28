@@ -9,7 +9,12 @@ export interface Call {
   readonly credentials: RequestCredentials | undefined;
 }
 
-export type Handler = (call: Call) => { status?: number; body?: unknown };
+interface TestResponse {
+  status?: number;
+  body?: unknown;
+}
+
+export type Handler = (call: Call) => TestResponse | Promise<TestResponse>;
 
 /**
  * A DOM container plus a `fetch` stub that answers from registered routes
@@ -55,7 +60,7 @@ export function createTestDom(): TestDom {
       calls.push(call);
       const handler = routes.get(`${method} ${path}`);
       const result = handler
-        ? handler(call)
+        ? await handler(call)
         : { status: 404, body: { code: "test/no-route", message: path } };
       return new Response(JSON.stringify(result.body ?? {}), {
         status: result.status ?? 200,

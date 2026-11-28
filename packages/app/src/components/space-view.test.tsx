@@ -195,6 +195,71 @@ afterEach(async () => {
 });
 
 describe("SpaceView on a branch", () => {
+  it("retains a failed title and retries it before leaving edit mode", async () => {
+    visit(`/orgs/o1/spaces/s1/pages/p1?${CR}`);
+    let isRejected = true;
+    dom.route("PATCH", `${PAGE}?${CR}`, () =>
+      isRejected
+        ? {
+            status: 503,
+            body: { code: "service/busy", message: "Rename failed" },
+          }
+        : { body: { head: "r2" } },
+    );
+    await renderApp();
+    const title = await dom.waitFor(() =>
+      dom.container.querySelector<HTMLElement>("h1.title"),
+    );
+    const enter = async () =>
+      act(async () => {
+        title.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+        );
+      });
+    await act(async () => {
+      title.textContent = "New title";
+    });
+    await enter();
+    await dom.waitFor(() => callsTo("PATCH").length === 1);
+    await enter();
+    await dom.waitFor(() => callsTo("PATCH").length === 2);
+    await clickButton("Done");
+    expect(currentPath()).toBe(`/orgs/o1/spaces/s1/pages/p1?${CR}`);
+    expect(title.textContent).toBe("New title");
+    isRejected = false;
+    await clickButton("Done");
+    await dom.waitFor(() => currentPath() === "/orgs/o1/spaces/s1/pages/p1");
+    expect(callsTo("PATCH").length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("waits for an in-flight title save before leaving edit mode", async () => {
+    visit(`/orgs/o1/spaces/s1/pages/p1?${CR}`);
+    let release = () => {};
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    dom.route("PATCH", `${PAGE}?${CR}`, async () => {
+      await pending;
+      return { body: { head: "r2" } };
+    });
+    await renderApp();
+    const title = await dom.waitFor(() =>
+      dom.container.querySelector<HTMLElement>("h1.title"),
+    );
+    await act(async () => {
+      title.textContent = "New title";
+      title.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      );
+    });
+    await dom.waitFor(() => callsTo("PATCH").length === 1);
+    await clickButton("Done");
+    expect(currentPath()).toBe(`/orgs/o1/spaces/s1/pages/p1?${CR}`);
+    await act(async () => release());
+    await dom.waitFor(() => currentPath() === "/orgs/o1/spaces/s1/pages/p1");
+    expect(callsTo("PATCH")).toHaveLength(1);
+  });
+
   it("clears a previous page's save error when opening another page", async () => {
     visit(`/orgs/o1/spaces/s1/pages/p1?${CR}`);
     dom.route("GET", `${SPACE}/pages/p2?${CR}`, () => ({

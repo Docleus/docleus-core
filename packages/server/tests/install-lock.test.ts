@@ -86,14 +86,23 @@ describe("install lock", () => {
 
   it("takes over the lease of a holder that stopped renewing it", async () => {
     const { ctx } = await storage();
+    const now = Date.now();
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now);
     const crashed = createInstallLock(ctx, { leaseMs: 40, renewMs: 60_000 });
     const waiter = createInstallLock(ctx, { pollMs: 5, waitMs: 2000 });
     const gate = deferred();
     const held = holding(crashed, gate);
-    await held.started;
-    expect(await waiter.run(async () => "taken over")).toBe("taken over");
-    gate.resolve();
-    await expect(held.done).rejects.toMatchObject({
+    const outcome = held.done.catch((error: unknown) => error);
+    try {
+      await held.started;
+      clock.mockReturnValue(now + 41);
+      expect(await waiter.run(async () => "taken over")).toBe("taken over");
+    } finally {
+      gate.resolve();
+      await outcome;
+      clock.mockRestore();
+    }
+    expect(await outcome).toMatchObject({
       code: "plugin/install-lease-lost",
     });
   });

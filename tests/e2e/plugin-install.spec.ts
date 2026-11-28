@@ -29,6 +29,10 @@ async function signIn(page: Page): Promise<void> {
   await form.getByLabel("Email").fill("admin@example.com");
   await form.getByRole("button", { name: "Sign in" }).click();
   await expect(
+    page.getByRole("button", { name: "Account", exact: true }),
+  ).toBeVisible();
+  await page.goto("/?new=org");
+  await expect(
     page.getByRole("form", { name: "Create organization" }),
   ).toBeVisible();
 }
@@ -115,4 +119,51 @@ test("an uploaded plugin's block is usable in the editor without a restart", asy
     return ((await response.json()) as { page: { body: unknown } }).page.body;
   }, new URL(page.url()).pathname);
   expect(JSON.stringify(stored)).toContain('"type":"test.stamp"');
+});
+
+test("Done retains a failed title until a successful retry", async ({
+  page,
+}) => {
+  await signIn(page);
+  await createSpace(page);
+  await page
+    .getByRole("button", { name: /^\+? ?New page$/ })
+    .first()
+    .click();
+  const title = page.locator("h1.title");
+  await expect(title).toHaveAttribute("contenteditable", "plaintext-only");
+  const editingUrl = page.url();
+  const endpoint = /\/api\/orgs\/[^/]+\/spaces\/[^/]+\/pages\/[^/?]+(?:\?.*)?$/;
+  await page.route(endpoint, async (route) => {
+    if (route.request().method() !== "PATCH") return route.continue();
+    await route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({
+        code: "test/title-failed",
+        message: "Temporary title failure",
+      }),
+    });
+  });
+  await title.fill("Recover this title");
+  const rejected = page.waitForResponse(
+    (response) =>
+      response.request().method() === "PATCH" && response.status() === 503,
+  );
+  await title.press("Enter");
+  await rejected;
+  await page.getByRole("button", { name: "Done", exact: true }).click();
+  await expect(page.getByText("Temporary title failure").first()).toBeVisible();
+  await expect(page).toHaveURL(editingUrl);
+  await expect(title).toHaveText("Recover this title");
+  await page.unroute(endpoint);
+  await page.getByRole("button", { name: "Done", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Done", exact: true }),
+  ).not.toBeVisible();
+  const response = await page.request.get(
+    `/api${new URL(page.url()).pathname}`,
+  );
+  expect(response.ok()).toBe(true);
+  expect((await response.json()).page.title).toBe("Recover this title");
 });

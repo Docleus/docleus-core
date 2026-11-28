@@ -78,9 +78,15 @@ export function parseSummary(markdown: string, baseDir = ""): Node[] {
   );
 }
 
-/** The tree structure only: titles may come from frontmatter, so they are not compared. */
-function summaryShape(nodes: readonly Node[]): unknown {
-  return nodes.map((node) => [node.path, summaryShape(node.children)]);
+function summaryShape(
+  nodes: readonly Node[],
+  fallbackTitles: ReadonlyMap<string, string>,
+): unknown {
+  return nodes.map((node) => [
+    node.path,
+    node.title ?? fallbackTitles.get(node.path),
+    summaryShape(node.children, fallbackTitles),
+  ]);
 }
 
 function printSummary(nodes: readonly Node[]): string {
@@ -280,12 +286,22 @@ export function exportDirectory(
         children: build(entry.path),
       }));
   const tree = build(undefined);
+  const fallbackTitles = new Map(
+    input.entries.map((entry) => {
+      const frontmatterTitle = entry.document.frontmatter?.title;
+      const title =
+        (typeof frontmatterTitle === "string" ? frontmatterTitle : undefined) ??
+        firstHeading(files[entry.path] ?? "") ??
+        titleFromFile(entry.path);
+      return [entry.path, title];
+    }),
+  );
 
   const kept = input.summary;
   const isUnchanged =
     kept !== undefined &&
-    JSON.stringify(summaryShape(parseSummary(kept))) ===
-      JSON.stringify(summaryShape(tree));
+    JSON.stringify(summaryShape(parseSummary(kept), fallbackTitles)) ===
+      JSON.stringify(summaryShape(tree, fallbackTitles));
   files[SUMMARY_FILE] = isUnchanged ? kept : printSummary(tree);
 
   const keptConfig = input.configText;

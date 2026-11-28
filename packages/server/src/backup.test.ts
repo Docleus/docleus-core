@@ -11,7 +11,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
-import { backupBeforeMigrating, bootStateOf, prepareBoot } from "./backup.ts";
+import {
+  backupBeforeMigrating,
+  bootStateOf,
+  prepareBoot,
+  writeBootState,
+} from "./backup.ts";
 
 const dirs: string[] = [];
 
@@ -67,6 +72,27 @@ describe("backups before migrations", () => {
     expect(boot.backup).toBeUndefined();
     await boot.finish();
     expect(existsSync(join(dir, "boot-state.json"))).toBe(true);
+  });
+
+  it("lets concurrent writers atomically finish on the same directory", async () => {
+    const dir = dataDir();
+    const states = Array.from({ length: 8 }, (_, index) =>
+      bootStateOf(`0.0.${index}`, PLUGINS),
+    );
+    await Promise.all(states.map((state) => writeBootState(dir, state)));
+    expect(states).toContainEqual(
+      JSON.parse(readFileSync(join(dir, "boot-state.json"), "utf8")),
+    );
+    expect(readdirSync(dir)).toEqual(["boot-state.json"]);
+  });
+
+  it("cleans up its temporary file when replacement fails", async () => {
+    const dir = dataDir();
+    mkdirSync(join(dir, "boot-state.json"));
+    await expect(
+      writeBootState(dir, bootStateOf("0.0.1", [])),
+    ).rejects.toThrow();
+    expect(readdirSync(dir)).toEqual(["boot-state.json"]);
   });
 
   it("backs up when versions changed since the last boot, and only then", async () => {

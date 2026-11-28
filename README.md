@@ -263,3 +263,5 @@ Blob collection requires both `list` and `deleteIfUnchanged`: it never falls bac
 Markdown export preserves separate adjacent lists through edits and reordering. When a preceding list changes, an otherwise unchanged list marker may be adjusted to preserve its boundary.
 
 Generated `SUMMARY.md` links encode each path segment so filenames containing fragments, parentheses, percent signs, spaces or Unicode round-trip without losing pages.
+
+GitBook import treats a closing code fence as complete only when the remaining line contains whitespace. Literal GitBook tags in code examples remain unchanged.

@@ -265,3 +265,5 @@ Markdown export preserves separate adjacent lists through edits and reordering. 
 Generated `SUMMARY.md` links encode each path segment so filenames containing fragments, parentheses, percent signs, spaces or Unicode round-trip without losing pages.
 
 GitBook import treats a closing code fence as complete only when the remaining line contains whitespace. Literal GitBook tags in code examples remain unchanged.
+
+Page deletion and Undo support the same subtree size. Restoring deleted pages accepts every id returned by the deletion response.

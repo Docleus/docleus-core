@@ -33,6 +33,16 @@ describe("convertGitbookTags", () => {
     expect(convertGitbookTags(source)).toBe(source);
   });
 
+  it.each(["````", "~~~"])(
+    "keeps %s followed by text inside fenced examples",
+    (marker) => {
+      const source = `${marker}md\nexample\n${marker}example\n{% hint %}\n${marker}\n{% hint %}\n`;
+      expect(convertGitbookTags(source)).toBe(
+        `${marker}md\nexample\n${marker}example\n{% hint %}\n${marker}\n::block{type="gitbook.hint"}\n`,
+      );
+    },
+  );
+
   it("leaves an end tag with no opening tag as text", () => {
     expect(convertGitbookTags("{% endhint %}")).toBe("{% endhint %}");
   });

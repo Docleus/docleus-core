@@ -108,7 +108,13 @@ export function SpaceView(props: {
     `draft/${orgId}/${spaceId}/${uiVersion}#${treeVersion}@${branch}`,
     () => ui.findEditDraft({ orgId, spaceId }),
   );
-  const [saveState, setSaveState] = useState<SaveState | undefined>();
+  const saveKey = `${orgId}/${spaceId}/${props.pageId ?? ""}/${branch}`;
+  const [pageSave, setPageSave] = useState<{ key: string; state: SaveState }>();
+  const saveState = pageSave?.key === saveKey ? pageSave.state : undefined;
+  const onSaveState = useCallback(
+    (state: SaveState) => setPageSave({ key: saveKey, state }),
+    [saveKey],
+  );
   const [stopTasks] = useState(() => new Set<() => Promise<void>>());
   const onStopEditing = useCallback(
     (task: () => Promise<void>) => {
@@ -148,7 +154,7 @@ export function SpaceView(props: {
   const isEditing =
     canWrite && (branch !== MAIN_BRANCH || params.get("edit") === "1");
   useEffect(() => {
-    if (!isEditing) setSaveState(undefined);
+    if (!isEditing) setPageSave(undefined);
   }, [isEditing]);
 
   const openBranch = useCallback(
@@ -628,7 +634,7 @@ export function SpaceView(props: {
         openBranch={openBranch}
         gate={gate}
         isNew={params.get("new") === "1"}
-        onSaveState={setSaveState}
+        onSaveState={onSaveState}
         onRename={(title) =>
           fireWrite(
             write(current.id, (target) =>

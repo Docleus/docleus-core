@@ -195,6 +195,36 @@ afterEach(async () => {
 });
 
 describe("SpaceView on a branch", () => {
+  it("clears a previous page's save error when opening another page", async () => {
+    visit(`/orgs/o1/spaces/s1/pages/p1?${CR}`);
+    dom.route("GET", `${SPACE}/pages/p2?${CR}`, () => ({
+      body: {
+        head: "r1",
+        page: {
+          id: "p2",
+          title: "Usage",
+          type: "page",
+          order: 2,
+          fields: {},
+          body: body("Usage"),
+        },
+      },
+    }));
+    await renderApp();
+    await dom.waitFor(() => output("Editor branch") === "cr/1");
+    await clickButton("Report save error");
+    const second = await dom.waitFor(() =>
+      dom.container.querySelector<HTMLAnchorElement>('a[href*="/pages/p2?"]'),
+    );
+    await dom.click(second);
+    await dom.waitFor(
+      () => dom.container.querySelector("h1.title")?.textContent === "Usage",
+    );
+    expect(dom.container.querySelector(".save-state")).toBeNull();
+    await clickButton("Done");
+    await dom.waitFor(() => currentPath() === "/orgs/o1/spaces/s1/pages/p2");
+  });
+
   it("keeps edit mode when a plugin's stop task fails and allows retry", async () => {
     visit(`/orgs/o1/spaces/s1/pages/p1?${CR}`);
     await renderApp();

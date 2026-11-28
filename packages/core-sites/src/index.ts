@@ -172,6 +172,7 @@ export function createSitesService(
   async function removeSite(id: string): Promise<void> {
     await ctx.storage.transaction(async (trx) => {
       const t = trx as unknown as Kysely<SitesSchema>;
+      await t.updateTable("sites").set({ id }).where("id", "=", id).execute();
       await t.deleteFrom("site_active").where("site_id", "=", id).execute();
       await t
         .deleteFrom("site_publications")
@@ -490,19 +491,29 @@ export function createSitesService(
           at: Date.now(),
           by: publishOptions.by,
         };
-        await db
-          .insertInto("site_publications")
-          .values({
-            id: publication.id,
-            site_id: siteId,
-            artifact: publication.artifact,
-            revisions: canonicalJson(publication.revisions),
-            config: canonicalJson(publication.config),
-            lockfile: JSON.stringify(publication.lockfile),
-            at: publication.at,
-            by: publication.by ?? null,
-          })
-          .execute();
+        await ctx.storage.transaction(async (trx) => {
+          const t = trx as unknown as Kysely<SitesSchema>;
+          const locked = await t
+            .updateTable("sites")
+            .set({ id: siteId })
+            .where("id", "=", siteId)
+            .returning("id")
+            .executeTakeFirst();
+          if (!locked) throw siteNotFound(siteId);
+          await t
+            .insertInto("site_publications")
+            .values({
+              id: publication.id,
+              site_id: siteId,
+              artifact: publication.artifact,
+              revisions: canonicalJson(publication.revisions),
+              config: canonicalJson(publication.config),
+              lockfile: JSON.stringify(publication.lockfile),
+              at: publication.at,
+              by: publication.by ?? null,
+            })
+            .execute();
+        });
         await activateNow(siteId, publication, false, publishOptions.by);
         return publication;
       });

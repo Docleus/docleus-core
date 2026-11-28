@@ -49,6 +49,9 @@ describe("separate list boundaries", () => {
 
   it.each([
     "1. First\n\n9) Ninth\n",
+    "*\n\n- Second\n",
+    "1.\n\n2) Second\n",
+    "+\n\n* Second\n",
     "* First\n\n- Second\n",
     "1. First\n\n9) Ninth\n\n3. Third\n",
   ])("preserves lists when either neighbor is edited: %s", (source) => {

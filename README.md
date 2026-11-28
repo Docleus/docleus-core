@@ -264,6 +264,8 @@ Markdown export preserves separate adjacent lists through edits and reordering. 
 
 Generated `SUMMARY.md` links encode each path segment so filenames containing fragments, parentheses, percent signs, spaces or Unicode round-trip without losing pages.
 
+Adjacent lists retain separate boundaries when an imported list starts with an empty item.
+
 GitBook import treats a closing code fence as complete only when the remaining line contains whitespace. Literal GitBook tags in code examples remain unchanged.
 
 Organization, space and site settings updates read and write within one storage transaction. Concurrent edits to independent fields preserve both changes and emit the committed settings.

@@ -351,7 +351,7 @@ function separatorFor(
 }
 
 function listMarker(text: string): string | undefined {
-  const match = /^ {0,3}(?:([*+-])|\d+([.)]))[ \t]/.exec(text);
+  const match = /^ {0,3}(?:([*+-])|\d+([.)]))(?:[ \t]|$)/.exec(text);
   return match?.[1] ?? match?.[2];
 }
 

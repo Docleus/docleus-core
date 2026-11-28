@@ -261,3 +261,5 @@ Blob collection requires both `list` and `deleteIfUnchanged`: it never falls bac
 `ctx.content.deleteBranch(spaceId, name, { expectedHead })` removes only the observed branch head; `undefined` expects an empty branch. A changed head rejects with `content/stale-head`, preserving later edits during merge/close recovery. Omitting the options keeps unconditional deletion for existing callers.
 
 Markdown export preserves separate adjacent lists through edits and reordering. When a preceding list changes, an otherwise unchanged list marker may be adjusted to preserve its boundary.
+
+Generated `SUMMARY.md` links encode each path segment so filenames containing fragments, parentheses, percent signs, spaces or Unicode round-trip without losing pages.

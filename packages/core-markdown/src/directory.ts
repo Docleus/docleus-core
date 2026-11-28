@@ -70,7 +70,10 @@ export function parseSummary(markdown: string, baseDir = ""): Node[] {
       );
       const children = nested.flatMap(fromList);
       if (!link || /^[a-z]+:/i.test(link.url)) return children;
-      const path = joinPath(baseDir, decodeURI(link.url.split("#")[0] ?? ""));
+      const path = joinPath(
+        baseDir,
+        decodeURIComponent(link.url.split("#")[0] ?? ""),
+      );
       return [{ path, title: textOf(link) || undefined, children }];
     });
   return tree.children.flatMap((node) =>
@@ -94,7 +97,16 @@ function printSummary(nodes: readonly Node[]): string {
   const walk = (level: readonly Node[], depth: number): void => {
     for (const node of level) {
       const title = (node.title ?? node.path).replaceAll(/([[\]\\])/g, "\\$1");
-      lines.push(`${"  ".repeat(depth)}* [${title}](${encodeURI(node.path)})`);
+      lines.push(
+        `${"  ".repeat(depth)}* [${title}](${node.path
+          .split("/")
+          .map((segment) =>
+            encodeURIComponent(segment)
+              .replaceAll("(", "%28")
+              .replaceAll(")", "%29"),
+          )
+          .join("/")})`,
+      );
       walk(node.children, depth + 1);
     }
   };

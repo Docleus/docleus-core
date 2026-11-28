@@ -723,12 +723,7 @@ export function createContentService(ctx: Context): ContentService {
     },
     async createSpace({ orgId, slug, name, description = "" }) {
       assertSlug(slug);
-      if (!(await getOrg(orgId))) {
-        throw new DocleusError(
-          "content/org-not-found",
-          `org "${orgId}" does not exist`,
-        );
-      }
+      await ready;
       const row = {
         id: uuidv7(),
         org_id: orgId,
@@ -740,6 +735,7 @@ export function createContentService(ctx: Context): ContentService {
       try {
         await ctx.storage.transaction(async (trx) => {
           const t = trx as unknown as Kysely<ContentSchema>;
+          if (!(await getOrg(orgId))) throw orgNotFound(orgId);
           await t.insertInto("spaces").values(row).execute();
           await t
             .insertInto("branches")
@@ -793,16 +789,17 @@ export function createContentService(ctx: Context): ContentService {
       return org;
     },
     async deleteOrg(id) {
-      const org = await getOrg(id);
-      if (!org) throw orgNotFound(id);
-      const spaces = await db
-        .selectFrom("spaces")
-        .selectAll()
-        .where("org_id", "=", id)
-        .where("deleted_at", "is", null)
-        .execute();
+      await ready;
       const entries = await ctx.storage.transaction(async (trx) => {
         const t = trx as unknown as Kysely<ContentSchema>;
+        const org = await getOrg(id);
+        if (!org) throw orgNotFound(id);
+        const spaces = await db
+          .selectFrom("spaces")
+          .selectAll()
+          .where("org_id", "=", id)
+          .where("deleted_at", "is", null)
+          .execute();
         const at = Date.now();
         const out: LogEntry[] = [];
         for (const space of spaces) {

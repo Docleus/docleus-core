@@ -775,19 +775,21 @@ export function createContentService(ctx: Context): ContentService {
     },
     async updateOrg(id, update) {
       if (update.slug !== undefined) assertSlug(update.slug);
-      const before = await getOrg(id);
-      if (!before) throw orgNotFound(id);
-      const org = { ...before, ...definedOf(update) };
-      const entry = await uniqueSlug(`org slug "${org.slug}"`, () =>
-        ctx.storage.transaction(async (trx) => {
-          const t = trx as unknown as Kysely<ContentSchema>;
-          await t
-            .updateTable("orgs")
-            .set({ slug: org.slug, name: org.name })
-            .where("id", "=", id)
-            .execute();
-          return appendIn(t, "org/updated", { org });
-        }),
+      const { org, entry } = await uniqueSlug(
+        `org slug "${update.slug ?? id}"`,
+        () =>
+          ctx.storage.transaction(async (trx) => {
+            const before = await getOrg(id);
+            if (!before) throw orgNotFound(id);
+            const org = { ...before, ...definedOf(update) };
+            const t = trx as unknown as Kysely<ContentSchema>;
+            await t
+              .updateTable("orgs")
+              .set({ slug: org.slug, name: org.name })
+              .where("id", "=", id)
+              .execute();
+            return { org, entry: await appendIn(t, "org/updated", { org }) };
+          }),
       );
       appended(entry);
       return org;
@@ -830,12 +832,12 @@ export function createContentService(ctx: Context): ContentService {
     },
     async updateSpace(id, update) {
       if (update.slug !== undefined) assertSlug(update.slug);
-      const before = await getSpace(id);
-      const space = { ...before, ...definedOf(update) };
-      const entry = await uniqueSlug(
-        `space slug "${space.slug}" in org "${space.orgId}"`,
+      const { space, entry } = await uniqueSlug(
+        `space slug "${update.slug ?? id}"`,
         () =>
           ctx.storage.transaction(async (trx) => {
+            const before = await getSpace(id);
+            const space = { ...before, ...definedOf(update) };
             const t = trx as unknown as Kysely<ContentSchema>;
             await t
               .updateTable("spaces")
@@ -846,7 +848,10 @@ export function createContentService(ctx: Context): ContentService {
               })
               .where("id", "=", id)
               .execute();
-            return appendIn(t, "space/updated", { space });
+            return {
+              space,
+              entry: await appendIn(t, "space/updated", { space }),
+            };
           }),
       );
       appended(entry);

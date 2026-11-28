@@ -3,6 +3,15 @@ import { describe, expect, it } from "vitest";
 import { convertGitbookTags, createMarkdownService } from "./index.ts";
 
 describe("convertGitbookTags", () => {
+  it.each([
+    "    {% hint %}\n",
+    "\t{% hint %}\n",
+    "- Example\n\n      {% hint %}\n",
+    "> ```liquid\n> {% hint %}\n> ```\n",
+  ])("preserves CommonMark code examples %j", (source) => {
+    expect(convertGitbookTags(source)).toBe(source);
+  });
+
   it("turns a block tag into a generic container tag", () => {
     expect(
       convertGitbookTags('{% hint style="warning" %}\nCareful.\n{% endhint %}'),

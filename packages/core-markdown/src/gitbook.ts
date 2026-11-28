@@ -1,10 +1,11 @@
+import type { Nodes as MarkdownNode } from "mdast";
+import { fromMarkdown } from "mdast-util-from-markdown";
 import { encodeAttrs } from "./generic.ts";
 
 /** Type namespace for blocks imported from GitBook tags, such as `gitbook.hint`. */
 export const GITBOOK_NAMESPACE = "gitbook";
 
 const TAG = /^[ \t]*\{%-?\s*(end)?([A-Za-z][\w-]*)\s*([\s\S]*?)\s*-?%\}[ \t]*$/;
-const FENCE = /^[ \t]{0,3}(`{3,}|~{3,})/;
 const ATTRIBUTE = /([A-Za-z][\w-]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|(\S+))/g;
 
 type Node =
@@ -48,24 +49,23 @@ function parse(lines: readonly string[]): Node[] {
   const root: Node[] = [];
   const stack: { node: Extract<Node, { kind: "tag" }>; parent: Node[] }[] = [];
   let current = root;
-  let fence: string | undefined;
-  for (const text of lines) {
-    const fenceMatch = FENCE.exec(text);
-    if (fence) {
-      const marker = fenceMatch?.[1];
-      if (
-        marker !== undefined &&
-        marker[0] === fence[0] &&
-        marker.length >= fence.length &&
-        /^[ \t]*$/.test(text.slice(fenceMatch?.[0].length ?? 0))
+  const codeLines = new Set<number>();
+  function markCode(node: MarkdownNode): void {
+    if (node.type === "code" && node.position) {
+      for (
+        let line = node.position.start.line;
+        line <= node.position.end.line;
+        line += 1
       ) {
-        fence = undefined;
+        codeLines.add(line - 1);
       }
-      current.push({ kind: "line", text });
-      continue;
+    } else if ("children" in node) {
+      for (const child of node.children) markCode(child);
     }
-    if (fenceMatch?.[1]) {
-      fence = fenceMatch[1];
+  }
+  markCode(fromMarkdown(lines.join("\n")));
+  for (const [index, text] of lines.entries()) {
+    if (codeLines.has(index)) {
       current.push({ kind: "line", text });
       continue;
     }

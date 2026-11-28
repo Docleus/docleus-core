@@ -387,40 +387,42 @@ export function createSitesService(
       return rows.map((row) => toSite(row, row.publication_id));
     },
     async update(id, input) {
-      const current = await requireSite(id);
-      if (input.slug !== undefined) assertSlug(input.slug);
-      if (input.name !== undefined) assertName(input.name);
-      const domain =
-        input.domain === undefined
-          ? current.domain
-          : input.domain === null
-            ? undefined
-            : parseDomain(input.domain);
-      if (input.spaces !== undefined) {
-        await assertSpacesOf(current.orgId, input.spaces);
-      }
-      const next: Site = {
-        ...current,
-        slug: input.slug ?? current.slug,
-        name: input.name ?? current.name,
-        theme:
-          input.theme === undefined
-            ? current.theme
-            : (input.theme ?? undefined),
-        domain,
-        spaces: input.spaces ?? current.spaces,
-      };
-      try {
-        await db
-          .updateTable("sites")
-          .set(toRow(next))
-          .where("id", "=", id)
-          .execute();
-      } catch (error) {
-        if (!isUniqueViolation(error)) throw error;
-        throw uniqueError(error, next);
-      }
-      return (await get(id)) ?? next;
+      return ctx.storage.transaction(async () => {
+        const current = await requireSite(id);
+        if (input.slug !== undefined) assertSlug(input.slug);
+        if (input.name !== undefined) assertName(input.name);
+        const domain =
+          input.domain === undefined
+            ? current.domain
+            : input.domain === null
+              ? undefined
+              : parseDomain(input.domain);
+        if (input.spaces !== undefined) {
+          await assertSpacesOf(current.orgId, input.spaces);
+        }
+        const next: Site = {
+          ...current,
+          slug: input.slug ?? current.slug,
+          name: input.name ?? current.name,
+          theme:
+            input.theme === undefined
+              ? current.theme
+              : (input.theme ?? undefined),
+          domain,
+          spaces: input.spaces ?? current.spaces,
+        };
+        try {
+          await db
+            .updateTable("sites")
+            .set(toRow(next))
+            .where("id", "=", id)
+            .execute();
+        } catch (error) {
+          if (!isUniqueViolation(error)) throw error;
+          throw uniqueError(error, next);
+        }
+        return (await get(id)) ?? next;
+      });
     },
     async remove(id) {
       await requireSite(id);

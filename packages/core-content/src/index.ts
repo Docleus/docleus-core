@@ -774,6 +774,7 @@ export function createContentService(ctx: Context): ContentService {
       return rows.map(toSpace);
     },
     async updateOrg(id, update) {
+      await ready;
       if (update.slug !== undefined) assertSlug(update.slug);
       const { org, entry } = await uniqueSlug(
         `org slug "${update.slug ?? id}"`,
@@ -831,6 +832,7 @@ export function createContentService(ctx: Context): ContentService {
       for (const entry of entries) appended(entry);
     },
     async updateSpace(id, update) {
+      await ready;
       if (update.slug !== undefined) assertSlug(update.slug);
       const { space, entry } = await uniqueSlug(
         `space slug "${update.slug ?? id}"`,

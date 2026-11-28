@@ -387,6 +387,7 @@ export function createSitesService(
       return rows.map((row) => toSite(row, row.publication_id));
     },
     async update(id, input) {
+      await ready;
       return ctx.storage.transaction(async () => {
         const current = await requireSite(id);
         if (input.slug !== undefined) assertSlug(input.slug);

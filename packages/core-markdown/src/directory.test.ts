@@ -13,6 +13,20 @@ const shape = (result: DirectoryImport): unknown =>
   }));
 
 describe("importDirectory with SUMMARY.md", () => {
+  it.each(["100%.md", "guide%zz.md", "%FF.md"])(
+    "imports a literal percent path %s",
+    (path) => {
+      const files = {
+        [SUMMARY_FILE]: `* [Example](${path})\n`,
+        [path]: "# Example\n",
+      };
+      const imported = markdown.importDirectory(files);
+      expect(imported.entries.map((entry) => entry.path)).toEqual([path]);
+      expect(imported.warnings).toEqual([]);
+      expect(markdown.exportDirectory(imported)).toEqual(files);
+    },
+  );
+
   const files = {
     [SUMMARY_FILE]:
       "# Summary\n\n* [Home](README.md)\n* [Guide](guide/README.md)\n  * [Install](guide/install.md)\n  * [Gone](guide/gone.md)\n* [Elsewhere](https://example.com)\n",

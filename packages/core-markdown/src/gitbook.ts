@@ -56,7 +56,8 @@ function parse(lines: readonly string[]): Node[] {
       if (
         marker !== undefined &&
         marker[0] === fence[0] &&
-        marker.length >= fence.length
+        marker.length >= fence.length &&
+        /^[ \t]*$/.test(text.slice(fenceMatch?.[0].length ?? 0))
       ) {
         fence = undefined;
       }

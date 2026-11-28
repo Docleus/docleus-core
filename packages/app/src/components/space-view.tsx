@@ -635,17 +635,12 @@ export function SpaceView(props: {
         gate={gate}
         isNew={params.get("new") === "1"}
         onSaveState={onSaveState}
+        onStopEditing={onStopEditing}
         onRename={(title) =>
-          fireWrite(
-            write(current.id, (target) =>
-              api(
-                "PATCH",
-                withBranch(`${apiBase}/pages/${current.id}`, target),
-                {
-                  title,
-                },
-              ),
-            ),
+          write(current.id, (target) =>
+            api("PATCH", withBranch(`${apiBase}/pages/${current.id}`, target), {
+              title,
+            }),
           )
         }
       />

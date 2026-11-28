@@ -72,6 +72,24 @@ describe("createContentService", () => {
       });
     },
   );
+  it("leaves no live spaces when their organization is deleted concurrently", async () => {
+    const { content } = await freshContent();
+    const org = await content.createOrg({
+      slug: "temporary",
+      name: "Temporary",
+    });
+    const results = await Promise.allSettled([
+      content.deleteOrg(org.id),
+      content.createSpace({ orgId: org.id, slug: "last", name: "Last" }),
+    ]);
+    expect(results[0]?.status).toBe("fulfilled");
+    expect(await content.getOrg(org.id)).toBeUndefined();
+    expect(await content.listSpaces(org.id)).toEqual([]);
+    if (results[1]?.status === "rejected")
+      expect(results[1].reason).toMatchObject({
+        code: "content/org-not-found",
+      });
+  });
 
   it("preserves concurrent changes to distinct organization and space fields", async () => {
     const { content } = await freshContent();

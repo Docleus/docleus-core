@@ -1,5 +1,9 @@
 import { fileURLToPath } from "node:url";
-import { toEditorDocument, type BlockNode } from "@docleus/sdk";
+import {
+  toEditorDocument,
+  type BlockNode,
+  type EntryContent,
+} from "@docleus/sdk";
 import { testStorageLocation } from "@docleus/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { createInstance, type Instance } from "../src/index.ts";
@@ -428,6 +432,42 @@ describe("instance API", () => {
     );
     expect(write.status).toBe(403);
     expect((await outsider.call("GET", `${space}/plugins`)).status).toBe(403);
+  });
+
+  it("undoes deletion of a subtree containing more than one thousand pages", async () => {
+    const instance = await boot();
+    const admin = await login(instance);
+    const space = await setUpSpace(admin);
+    const spaceId = space.split("/").at(-1) ?? "";
+    const page: EntryContent = {
+      type: "page",
+      title: "Guide",
+      parent: undefined,
+      order: 0,
+      fields: {},
+      body: { id: "root", type: "doc", v: 1, attrs: {}, content: [] },
+    };
+    const put: Record<string, EntryContent> = { guide: page };
+    for (let index = 0; index < 1000; index += 1) {
+      put[`child-${index}`] = { ...page, parent: "guide", order: index };
+    }
+    await instance.ctx.content.commit({
+      spaceId,
+      parent: undefined,
+      put,
+      message: "Import guide",
+    });
+    const deleted = await admin.json<{ removed: string[]; before: string }>(
+      "DELETE",
+      `${space}/pages/guide`,
+    );
+    expect(deleted.removed).toHaveLength(1001);
+    await admin.json("POST", `${space}/pages/restore`, {
+      from: deleted.before,
+      ids: deleted.removed,
+    });
+    const head = await instance.ctx.content.head(spaceId);
+    expect(Object.keys(head?.entries ?? {})).toHaveLength(1001);
   });
 
   it("duplicates a page and restores deleted pages", async () => {

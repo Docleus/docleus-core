@@ -111,6 +111,26 @@ describe("space config", () => {
 });
 
 describe("exportDirectory", () => {
+  it.each([
+    "C#.md",
+    "paren).md",
+    "(guide).md",
+    "100%.md",
+    "C%23.md",
+    "read me.md",
+    "how?.md",
+    "guides/C# intro.md",
+  ])(
+    "round-trips the directory path %s through a generated summary",
+    (path) => {
+      const imported = markdown.importDirectory({ [path]: "# Example\n" });
+      const exported = markdown.exportDirectory(imported);
+      const restored = markdown.importDirectory(exported);
+      expect(shape(restored)).toEqual(shape(imported));
+      expect(restored.warnings).toEqual([]);
+    },
+  );
+
   const files = {
     [SUMMARY_FILE]:
       "# Table of contents\n\n- [Start](start.md)\n    - [Child](child.md)\n",

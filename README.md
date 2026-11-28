@@ -270,4 +270,6 @@ Adjacent lists retain separate boundaries when an imported list starts with an e
 
 GitBook import treats a closing code fence as complete only when the remaining line contains whitespace. Literal GitBook tags in code examples remain unchanged.
 
+Creating spaces and deleting their organization check and update organization membership under the same storage transaction lock, preventing live spaces under a deleted organization.
+
 Organization, space and site settings updates read and write within one storage transaction. Concurrent edits to independent fields preserve both changes and emit the committed settings.

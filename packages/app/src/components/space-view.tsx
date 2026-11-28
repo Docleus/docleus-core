@@ -195,7 +195,7 @@ export function SpaceView(props: {
     navigate(at);
     setIsLeaving(false);
   }, [base, props.pageId]);
-  // Done: the plugins' tasks first (a failing one is reported, not fatal).
+  // A failed save or plugin task keeps the editor available for recovery.
   const isFinishing = useRef(false);
   const finishEditing = useCallback(async () => {
     if (isFinishing.current) return;
@@ -214,11 +214,19 @@ export function SpaceView(props: {
       }
     }
     isFinishing.current = false;
+    if (results.some((result) => result.status === "rejected")) {
+      setIsLeaving(false);
+      return;
+    }
     stopEditing();
     refresh();
   }, [stopTasks, stopEditing, ui, refresh]);
   // Done waits for a save in flight, so the save does not switch the view back.
   const done = () => {
+    if (saveState?.kind === "error") {
+      ui.notify({ message: saveState.message });
+      return;
+    }
     setIsLeaving(true);
     if (saveState?.kind === "dirty" || saveState?.kind === "saving") {
       // Blurring the editor saves it; the effect below finishes after.
@@ -228,13 +236,14 @@ export function SpaceView(props: {
     }
   };
   useEffect(() => {
-    if (
-      isLeaving &&
-      (saveState?.kind === "saved" || saveState?.kind === "error")
-    ) {
+    if (!isLeaving) return;
+    if (saveState?.kind === "error") {
+      setIsLeaving(false);
+      ui.notify({ message: saveState.message });
+    } else if (saveState?.kind === "saved") {
       void finishEditing();
     }
-  }, [isLeaving, saveState, finishEditing]);
+  }, [isLeaving, saveState, finishEditing, ui]);
   const openView = useCallback(
     (id: string | undefined) =>
       navigate(

@@ -51,7 +51,7 @@ const createPageBody = z.object({
 const restoreBody = z.object({
   /** The revision the deleted pages are read from. */
   from: z.string().min(1),
-  ids: z.array(z.string().min(1)).min(1).max(1000),
+  ids: z.array(z.string().min(1)).min(1),
 });
 const updatePageBody = z.object({
   title: z.string().optional(),

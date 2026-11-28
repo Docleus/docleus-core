@@ -226,6 +226,8 @@ Export resolves the deployment config, database, bundle and blob secret using th
 
 It exports the active publication unless `--publication` names another, and refuses an output directory that is not empty.
 
+Page deletion and Undo support the same subtree size. Restoring deleted pages accepts every id returned by the deletion response.
+
 ## Browser host
 
 Save feedback belongs to the current page and branch. Done waits for a successful save and plugin exit tasks. A save or exit-task failure keeps the editor and draft available for retry.

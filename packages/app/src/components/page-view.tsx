@@ -53,10 +53,10 @@ function Title(props: {
   rename.current = props.onRename;
   const pending = useRef<Promise<void>>(Promise.resolve());
   const commit = useCallback(() => {
+    const text = (element.current?.textContent ?? "")
+      .replace(/\s+/g, " ")
+      .trim();
     const save = async () => {
-      const text = (element.current?.textContent ?? "")
-        .replace(/\s+/g, " ")
-        .trim();
       if (text === shown.current) return;
       await rename.current(text);
       shown.current = text;

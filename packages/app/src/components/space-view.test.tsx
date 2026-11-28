@@ -195,6 +195,61 @@ afterEach(async () => {
 });
 
 describe("SpaceView on a branch", () => {
+  it("keeps queued title text when its page is unmounted during a pending save", async () => {
+    visit(`/orgs/o1/spaces/s1/pages/p1?${CR}`);
+    let release = () => {};
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let writes = 0;
+    dom.route("PATCH", `${PAGE}?${CR}`, async () => {
+      writes += 1;
+      if (writes === 1) await pending;
+      return { body: { head: `r${writes + 1}` } };
+    });
+    dom.route("GET", `${SPACE}/pages/p2?${CR}`, () => ({
+      body: {
+        head: "r1",
+        page: {
+          id: "p2",
+          title: "Usage",
+          type: "page",
+          order: 2,
+          fields: {},
+          body: body("Usage"),
+        },
+      },
+    }));
+    await renderApp();
+    const title = await dom.waitFor(() =>
+      dom.container.querySelector<HTMLElement>("h1.title"),
+    );
+    const enter = async (text: string) =>
+      act(async () => {
+        title.textContent = text;
+        title.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+        );
+      });
+    await enter("First title");
+    await dom.waitFor(() => writes === 1);
+    await enter("Queued title");
+    const next = await dom.waitFor(() =>
+      dom.container.querySelector<HTMLAnchorElement>('a[href*="/pages/p2?"]'),
+    );
+    await dom.click(next);
+    await dom.waitFor(
+      () => dom.container.querySelector("h1.title")?.textContent === "Usage",
+    );
+    await act(async () => release());
+    await dom.waitFor(() => writes === 2);
+    const saved = dom.calls.filter((call) => call.method === "PATCH");
+    expect(saved.map((call) => call.body)).toEqual([
+      { title: "First title" },
+      { title: "Queued title" },
+    ]);
+  });
+
   it("retains a failed title and retries it before leaving edit mode", async () => {
     visit(`/orgs/o1/spaces/s1/pages/p1?${CR}`);
     let isRejected = true;

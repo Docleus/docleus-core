@@ -10,7 +10,7 @@ import {
   type Manifest,
 } from "@docleus/sdk";
 
-export const PLATFORM_VERSION = "0.0.11";
+export const PLATFORM_VERSION = "0.0.12";
 
 export function readManifest(dir: string): Manifest {
   const path = resolve(dir, "docleus.plugin.json");

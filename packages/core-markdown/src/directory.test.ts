@@ -125,6 +125,31 @@ describe("exportDirectory", () => {
     );
   });
 
+  it("exports renamed titles without changing page paths or hierarchy", () => {
+    const imported = markdown.importDirectory(files);
+    const renamed = {
+      ...imported,
+      entries: imported.entries.map((entry) => ({
+        ...entry,
+        title: `${entry.title} renamed`,
+      })),
+    };
+    const exported = markdown.exportDirectory(renamed);
+    expect(shape(markdown.importDirectory(exported))).toEqual(shape(renamed));
+    expect(exported["start.md"]).toBe(files["start.md"]);
+    expect(exported["child.md"]).toBe(files["child.md"]);
+  });
+
+  it("preserves a summary with empty labels when effective titles are unchanged", () => {
+    const emptyLabel = {
+      [SUMMARY_FILE]: "# Contents\n\n- [](start.md)\n",
+      "start.md": "---\ntitle: Start\n---\nBody\n",
+    };
+    expect(
+      markdown.exportDirectory(markdown.importDirectory(emptyLabel)),
+    ).toEqual(emptyLabel);
+  });
+
   it("rewrites SUMMARY.md only when the tree changes, and the config only when it changes", () => {
     const imported = markdown.importDirectory(files);
     const flattened = {

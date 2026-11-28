@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
-import { mkdir, rename, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
@@ -47,8 +48,15 @@ export async function writeBootState(
   state: BootState,
 ): Promise<void> {
   const path = join(dataDir, BOOT_STATE_FILE);
-  await writeFile(`${path}.tmp`, `${JSON.stringify(state, null, 2)}\n`);
-  await rename(`${path}.tmp`, path);
+  const temporary = `${path}.${randomUUID()}.tmp`;
+  try {
+    await writeFile(temporary, `${JSON.stringify(state, null, 2)}\n`, {
+      flag: "wx",
+    });
+    await rename(temporary, path);
+  } finally {
+    await rm(temporary, { force: true });
+  }
 }
 
 function isSameState(a: BootState, b: BootState): boolean {

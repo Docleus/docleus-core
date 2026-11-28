@@ -77,6 +77,31 @@ describe("createContentService", () => {
       });
   });
 
+  it("preserves concurrent changes to distinct organization and space fields", async () => {
+    const { content } = await freshContent();
+    const org = await content.createOrg({ slug: "settings", name: "Before" });
+    const space = await content.createSpace({
+      orgId: org.id,
+      slug: "docs",
+      name: "Before",
+    });
+    await Promise.all([
+      content.updateOrg(org.id, { name: "After" }),
+      content.updateOrg(org.id, { slug: "after" }),
+    ]);
+    expect(await content.getOrg(org.id)).toMatchObject({
+      name: "After",
+      slug: "after",
+    });
+    await Promise.all([
+      content.updateSpace(space.id, { name: "After" }),
+      content.updateSpace(space.id, { description: "New description" }),
+    ]);
+    expect(await content.listSpaces(org.id)).toMatchObject([
+      { name: "After", description: "New description" },
+    ]);
+  });
+
   it("emits content/log-appended with the appended entry", async () => {
     const { content, ctx } = await freshContent();
     const seen: LogEntry[] = [];

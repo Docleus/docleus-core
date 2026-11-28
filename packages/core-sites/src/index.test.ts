@@ -773,3 +773,30 @@ describe("deleted spaces and orgs", () => {
     expect(await harness.sites.list(org.id)).toEqual([]);
   });
 });
+
+it("preserves concurrent site changes to distinct fields", async () => {
+  const harness = await freshSites();
+  const org = await harness.content.createOrg({
+    slug: "concurrent",
+    name: "Org",
+  });
+  const space = await harness.content.createSpace({
+    orgId: org.id,
+    slug: "docs",
+    name: "Docs",
+  });
+  const site = await harness.sites.create({
+    orgId: org.id,
+    slug: "docs",
+    name: "Before",
+    spaces: [{ spaceId: space.id, path: "" }],
+  });
+  await Promise.all([
+    harness.sites.update(site.id, { name: "After" }),
+    harness.sites.update(site.id, { domain: "docs.example.test" }),
+  ]);
+  expect(await harness.sites.get(site.id)).toMatchObject({
+    name: "After",
+    domain: "docs.example.test",
+  });
+});

@@ -228,7 +228,7 @@ It exports the active publication unless `--publication` names another, and refu
 
 ## Browser host
 
-Done waits for a successful save and plugin exit tasks. A save or exit-task failure keeps the editor and draft available for retry.
+Save feedback belongs to the current page and branch. Done waits for a successful save and plugin exit tasks. A save or exit-task failure keeps the editor and draft available for retry.
 
 `@docleus/app` provides routing, login, organizations and spaces, the page tree, settings pages, and `ctx.ui` for plugin `editor` entries. It loads the `editor` entry of every plugin enabled for the current space (`GET /api/orgs/<org>/spaces/<space>/frontend`); organization pages (home, settings) load those enabled in the organization (`GET /api/orgs/<org>/frontend`), and the organization list and account page those of every installed plugin. Full-page apps under `/apps` belong to no space, so opening one loads the `editor` entry of every installed plugin (`GET /api/frontend`, signed-in users only) before it looks up the app; each app's API checks access and enablement itself.
 
@@ -267,3 +267,5 @@ Generated `SUMMARY.md` links encode each path segment so filenames containing fr
 GitBook import treats a closing code fence as complete only when the remaining line contains whitespace. Literal GitBook tags in code examples remain unchanged.
 
 Creating spaces and deleting their organization check and update organization membership under the same storage transaction lock, preventing live spaces under a deleted organization.
+
+Organization, space and site settings updates read and write within one storage transaction. Concurrent edits to independent fields preserve both changes and emit the committed settings.

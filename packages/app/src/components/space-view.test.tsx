@@ -1,4 +1,4 @@
-import { act, useState } from "react";
+import { act, useEffect, useState } from "react";
 import { Context, type BlockNode, type PageEditorProps } from "@docleus/sdk";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { HostContext, type Host } from "../lib/host.tsx";
@@ -74,6 +74,26 @@ function TestEditor(props: PageEditorProps) {
       </button>
       <button type="button" onClick={() => save("two")}>
         Save two
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          props.onSaveState?.({ kind: "error", message: "Write failed" })
+        }
+      >
+        Report save error
+      </button>
+      <button
+        type="button"
+        onClick={() => props.onSaveState?.({ kind: "saved" })}
+      >
+        Report saved
+      </button>
+      <button
+        type="button"
+        onClick={() => props.onSaveState?.({ kind: "saving" })}
+      >
+        Report saving
       </button>
     </section>
   );
@@ -175,6 +195,57 @@ afterEach(async () => {
 });
 
 describe("SpaceView on a branch", () => {
+  it("keeps edit mode when a plugin's stop task fails and allows retry", async () => {
+    visit(`/orgs/o1/spaces/s1/pages/p1?${CR}`);
+    await renderApp();
+    let attempts = 0;
+    ui.registerSlot("space.bar", {
+      id: "stop-task",
+      component: function StopTaskBar(props) {
+        useEffect(
+          () =>
+            props.onStopEditing(async () => {
+              attempts += 1;
+              if (attempts === 1) throw new Error("Temporary cleanup failure");
+            }),
+          [props.onStopEditing],
+        );
+        return <span>Plugin guard</span>;
+      },
+    });
+    await dom.waitFor(() => dom.text().includes("Plugin guard"));
+    await clickButton("Done");
+    expect(attempts).toBe(1);
+    expect(dom.button("Done")).toBeDefined();
+    expect(currentPath()).toBe(`/orgs/o1/spaces/s1/pages/p1?${CR}`);
+    await clickButton("Done");
+    await dom.waitFor(() => currentPath() === "/orgs/o1/spaces/s1/pages/p1");
+    expect(attempts).toBe(2);
+  });
+
+  it.each([false, true])(
+    "keeps the editor when saving fails (in flight %s)",
+    async (isInFlight) => {
+      visit(`/orgs/o1/spaces/s1/pages/p1?${CR}`);
+      await renderApp();
+      await dom.waitFor(() => output("Editor branch") === "cr/1");
+      if (isInFlight) {
+        await clickButton("Report saving");
+        await clickButton("Done");
+        await clickButton("Report save error");
+      } else {
+        await clickButton("Report save error");
+        await clickButton("Done");
+      }
+      expect(currentPath()).toBe(`/orgs/o1/spaces/s1/pages/p1?${CR}`);
+      expect(dom.button("Done")).toBeDefined();
+      expect(output("Editor mount")).toBe("1");
+      await clickButton("Report saved");
+      await clickButton("Done");
+      await dom.waitFor(() => currentPath() === "/orgs/o1/spaces/s1/pages/p1");
+    },
+  );
+
   it("loads the space and the page from ?branch= and keeps it in links", async () => {
     visit(`/orgs/o1/spaces/s1/pages/p1?${CR}`);
     const seen: { branch: string; entryId: string }[] = [];

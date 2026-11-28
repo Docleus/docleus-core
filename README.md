@@ -264,7 +264,7 @@ Blob collection requires both `list` and `deleteIfUnchanged`: it never falls bac
 
 Markdown export preserves separate adjacent lists through edits and reordering. When a preceding list changes, an otherwise unchanged list marker may be adjusted to preserve its boundary.
 
-Generated `SUMMARY.md` links encode each path segment so filenames containing fragments, parentheses, percent signs, spaces or Unicode round-trip without losing pages.
+Generated `SUMMARY.md` links encode each path segment so filenames containing fragments, parentheses, percent signs, spaces or Unicode round-trip without losing pages. Imports also accept literal percent signs and malformed percent escapes in hand-written paths.
 
 Adjacent lists retain separate boundaries when an imported list starts with an empty item.
 

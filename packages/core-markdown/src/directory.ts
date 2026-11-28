@@ -70,10 +70,13 @@ export function parseSummary(markdown: string, baseDir = ""): Node[] {
       );
       const children = nested.flatMap(fromList);
       if (!link || /^[a-z]+:/i.test(link.url)) return children;
-      const path = joinPath(
-        baseDir,
-        decodeURIComponent(link.url.split("#")[0] ?? ""),
-      );
+      let destination = link.url.split("#")[0] ?? "";
+      try {
+        destination = decodeURIComponent(destination);
+      } catch (error) {
+        if (!(error instanceof URIError)) throw error;
+      }
+      const path = joinPath(baseDir, destination);
       return [{ path, title: textOf(link) || undefined, children }];
     });
   return tree.children.flatMap((node) =>

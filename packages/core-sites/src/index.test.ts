@@ -800,3 +800,10 @@ it("preserves concurrent site changes to distinct fields", async () => {
     domain: "docs.example.test",
   });
 });
+
+it("rejects a cold settings update for a missing site", async () => {
+  const harness = await freshSites();
+  await expect(
+    harness.sites.update("missing", { name: "Missing" }),
+  ).rejects.toMatchObject({ code: "sites/not-found" });
+});

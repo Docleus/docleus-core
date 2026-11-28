@@ -58,6 +58,20 @@ afterEach(async () => {
 });
 
 describe("createContentService", () => {
+  it.each(["updateOrg", "updateSpace"] as const)(
+    "rejects cold settings updates for missing entities through %s",
+    async (method) => {
+      const { content } = await freshContent();
+      await expect(
+        content[method]("missing", { name: "Missing" }),
+      ).rejects.toMatchObject({
+        code:
+          method === "updateOrg"
+            ? "content/org-not-found"
+            : "content/space-not-found",
+      });
+    },
+  );
   it("leaves no live spaces when their organization is deleted concurrently", async () => {
     const { content } = await freshContent();
     const org = await content.createOrg({

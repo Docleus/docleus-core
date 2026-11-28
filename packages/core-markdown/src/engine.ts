@@ -350,6 +350,11 @@ function separatorFor(
   return "\n\n";
 }
 
+function listMarker(text: string): string | undefined {
+  const match = /^ {0,3}(?:([*+-])|\d+([.)]))[ \t]/.exec(text);
+  return match?.[1] ?? match?.[2];
+}
+
 export function serializeMarkdown(
   codecs: readonly MarkdownCodec[],
   document: MarkdownDocument,
@@ -369,19 +374,33 @@ export function serializeMarkdown(
 
   const blocks = document.body.content ?? [];
   let previousUnchanged: string | undefined;
+  let previousListMarker: string | undefined;
   blocks.forEach((block, index) => {
     const slice = source?.blocks[block.id];
     const isUnchanged = slice !== undefined && slice.hash === hashBlock(block);
+    const root: Root = { type: "root", children: context.fromBlocks([block]) };
+    const isList =
+      root.children.length === 1 && root.children[0]?.type === "list";
+    const keptMarker =
+      isList && isUnchanged ? listMarker(slice.text) : undefined;
+    const canKeep =
+      isUnchanged &&
+      (previousListMarker === undefined || keptMarker !== previousListMarker);
     const followsOriginal =
       previousUnchanged !== undefined && slice?.previous === previousUnchanged;
-    out += separatorFor(slice, index === 0, isUnchanged && followsOriginal);
-    previousUnchanged = isUnchanged ? block.id : undefined;
-    if (isUnchanged) {
-      out += slice.text;
-      return;
-    }
-    const root: Root = { type: "root", children: context.fromBlocks([block]) };
-    out += toMarkdown(root, options).replace(/\n+$/, "");
+    out += separatorFor(slice, index === 0, canKeep && followsOriginal);
+    previousUnchanged = canKeep ? block.id : undefined;
+    const text = canKeep
+      ? slice.text
+      : toMarkdown(root, {
+          ...options,
+          ...(previousListMarker && {
+            bullet: previousListMarker === "*" ? "-" : "*",
+            bulletOrdered: previousListMarker === "." ? ")" : ".",
+          }),
+        }).replace(/\n+$/, "");
+    out += text;
+    previousListMarker = isList ? listMarker(text) : undefined;
   });
 
   out += source?.end ?? (blocks.length > 0 ? "\n" : "");

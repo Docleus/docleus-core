@@ -266,6 +266,6 @@ Generated `SUMMARY.md` links encode each path segment so filenames containing fr
 
 Adjacent lists retain separate boundaries when an imported list starts with an empty item.
 
-GitBook import treats a closing code fence as complete only when the remaining line contains whitespace. Literal GitBook tags in code examples remain unchanged.
+GitBook import uses CommonMark code-block boundaries before interpreting tags. Literal tags in fenced, indented and nested code examples remain unchanged.
 
 Organization, space and site settings updates read and write within one storage transaction. Concurrent edits to independent fields preserve both changes and emit the committed settings.

@@ -72,7 +72,11 @@ function pluginSource(
 }
 
 async function freshSites(
-  options: { readonly cache?: SiteCacheOptions } = {},
+  options: {
+    readonly cache?: SiteCacheOptions;
+    readonly database?: string;
+    readonly beforeBlobWrite?: () => Promise<void>;
+  } = {},
 ): Promise<Harness> {
   const blobsDir = await mkdtemp(join(tmpdir(), "docleus-sites-"));
   dirs.push(blobsDir);
@@ -81,13 +85,17 @@ async function freshSites(
   const sources: SitePluginSource[] = [];
   const runtime = runtimeFiles();
   let subject: SitesSubject | undefined;
-  const storageLocation = await testStorageLocation();
+  const storageLocation = options.database ?? (await testStorageLocation());
   fibers.push(
     await root.plugin((ctx: Context) => {
       ctx.provide("storage", createStorageService(ctx, storageLocation));
       const blobs = createBlobsService(blobsDir);
       ctx.provide("blobs", {
         ...blobs,
+        async put(bytes) {
+          await options.beforeBlobWrite?.();
+          return blobs.put(bytes);
+        },
         get: (hash: string) => {
           blobReads.push(hash);
           return blobs.get(hash);
@@ -684,6 +692,49 @@ describe("blob marking", () => {
 });
 
 describe("deleted spaces and orgs", () => {
+  it("does not retain a publication when another connection removes the site during its build", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "docleus-sites-shared-"));
+    dirs.push(dir);
+    const database = (await testStorageLocation()) ?? join(dir, "sites.db");
+    let markStarted: (() => void) | undefined;
+    const started = new Promise<void>((resolve) => {
+      markStarted = resolve;
+    });
+    let continueBuild: (() => void) | undefined;
+    const removed = new Promise<void>((resolve) => {
+      continueBuild = resolve;
+    });
+    let isPublishing = false;
+    const harness = await freshSites({
+      database,
+      async beforeBlobWrite() {
+        if (!isPublishing) return;
+        markStarted?.();
+        await removed;
+      },
+    });
+    const { site } = await seed(harness, { docs: { page: page("Guide", 0) } });
+    await harness.content.catchUp("@docleus/core-sites/active");
+    const other = await freshSites({ database });
+    await other.sites.get(site.id);
+    await other.content.catchUp("@docleus/core-sites/active");
+    isPublishing = true;
+    const publication = harness.sites.publish(site.id).then(
+      (result) => ({ result }),
+      (error: unknown) => ({ error }),
+    );
+    await started;
+    try {
+      await other.sites.remove(site.id);
+    } finally {
+      continueBuild?.();
+    }
+    const result = await publication;
+    expect(await harness.sites.get(site.id)).toBeUndefined();
+    expect(await harness.sites.listPublications(site.id)).toEqual([]);
+    expect(result).toMatchObject({ error: { code: "sites/not-found" } });
+  });
+
   it("removes the sites a deleted space starts and drops it from the others", async () => {
     const harness = await freshSites();
     const { org, site, spaces } = await seed(

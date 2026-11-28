@@ -259,3 +259,5 @@ Projection callbacks and their cursor updates share a storage transaction, seria
 Blob collection requires both `list` and `deleteIfUnchanged`: it never falls back to unconditional deletion. Local storage compares opaque file generations while holding the shared storage transaction, which also serializes file replacements. Standalone local services without the shared storage coordinator and remote providers without safe generation deletion retain orphan candidates; operators must monitor storage growth.
 
 `ctx.content.deleteBranch(spaceId, name, { expectedHead })` removes only the observed branch head; `undefined` expects an empty branch. A changed head rejects with `content/stale-head`, preserving later edits during merge/close recovery. Omitting the options keeps unconditional deletion for existing callers.
+
+Markdown export preserves separate adjacent lists through edits and reordering. When a preceding list changes, an otherwise unchanged list marker may be adjusted to preserve its boundary.
